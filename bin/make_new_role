@@ -1,0 +1,244 @@
+#!/bin/bash
+# create the skeleton of an Ansible role
+# ---
+SCRIPT=$(basename $0)
+
+usage() {
+echo "${SCRIPT} <rolename>"
+echo
+echo "Creates the infrastructure for a new Ansible role"
+}
+
+if [ $# -ne 1 ]; then
+   usage
+   exit 1
+fi
+ROLE_NAME=$1
+ROLE_NAME_LOWERCASE=$(echo ${ROLE_NAME} | tr '[:upper:]' '[:lower:]')
+REPO_BASE=$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )
+ROLE_BASE=${REPO_BASE}/roles/${ROLE_NAME}/
+
+if [ -e $ROLE_BASE ]; then
+   echo "${SCRIPT}: Warning: $ROLE_BASE already exists. Exiting."
+   exit 1
+fi
+
+# Get user's full name
+# If user is running as rpcm on angus00...
+[[ "rpcm" == "$USER" ]] && user_full_name="YOUR NAME HERE"
+# If user has a Mac
+[[ -z "$user_full_name" && -x "$( which dscacheutil )" ]] && user_full_name="$( dscacheutil -q user -a name $USER | awk -F: '/^gecos/ { gsub(/^ /, "", $2); print $2 }' )"
+# If user is not rpcm, but running on angus as themselves
+[[ -z "$user_full_name" && -x "$( which getent )" ]] && user_full_name="$( getent passwd $USER | cut -d ':' -f 5 | cut -d ',' -f 1 )"
+#echo "USER FULL NAME: $user_full_name"
+
+mkdir -p  ${ROLE_BASE}/{tasks,handlers,templates,files,vars,defaults,meta}
+for i in handlers vars defaults
+do
+   main=${ROLE_BASE}/${i}/main.yml
+   echo '---' > ${main}
+   echo "# ${ROLE_NAME}: entry point for ${i}" >> ${main}
+done
+
+# Set up the tasks/ dir separately so
+# that main.yml is only for tagged includes
+# and all real tasks are in alternative file(s)
+task_base=${ROLE_BASE}/tasks/
+echo '---' > ${task_base}/${ROLE_NAME}.yml
+echo "# ${ROLE_NAME}: Tasks entry point. Called by main.yml " >> ${task_base}/${ROLE_NAME}.yml
+
+echo '---' > ${task_base}/main.yml
+echo "# ${ROLE_NAME}: entry point for tasks" >> ${task_base}/main.yml
+echo "#                 Generally only include other file(s) and add tags here." >> ${task_base}/main.yml
+echo -e "\n- include: ${ROLE_NAME}.yml tags=${ROLE_NAME}" >> ${task_base}/main.yml
+
+# create a basic README.md
+escaped_role_name=$(echo ${ROLE_NAME} | sed -e 's/_/\\_/g')
+cat << EOF > ${ROLE_BASE}/README.md
+Role: ${escaped_role_name}
+====
+**Description:**
+
+This role will:
+
+- Make your favorite breakfast sandwich
+
+Requirements
+------------
+
+**Supports:**
+
+  - YoctoLinux - Intel Edison 3.0
+
+**Assumptions:**
+
+This role makes the assumption that the \`foo\` command exists on the system.  Install this with the \`foo\` role.
+
+**Required Variables:**
+
+  - \`${ROLE_NAME_LOWERCASE}_foo\` - Required by \`${ROLE_NAME}\` role.
+  - \`${ROLE_NAME_LOWERCASE}_dependency_bar_baz\` - Required by dependency \`${ROLE_NAME_LOWERCASE}-dependency-bar\` role.
+
+
+Role Variables
+--------------
+
+The default role variables in \`defaults/main.yml\` are:
+
+    ---
+    # ${ROLE_NAME}: entry point for defaults
+    ${ROLE_NAME_LOWERCASE}_foo: true
+
+  - \`${ROLE_NAME_LOWERCASE}_foo\` - Allows foo-barring for ${ROLE_NAME}.
+
+Dependencies
+------------
+
+This role depends on the following roles:
+
+  - \`${ROLE_NAME_LOWERCASE}-dependency-bar\`
+
+
+Example Playbook
+----------------
+
+    ---
+    # This playbook deploys the ${ROLE_NAME} role
+
+    - hosts: foo
+
+      roles:
+        - ${ROLE_NAME}
+
+License
+-------
+
+[MIT][1]
+
+Author Information
+------------------
+
+(c) 2014-2016 LyraPhase.com / 37Om.com
+(c) 2014-2016 James Cuzella <@trinitronx>
+(c) $(date +%Y) ${user_full_name}
+
+[1]: http://choosealicense.com/licenses/mit/
+EOF
+
+## Create full metadata template for role
+metadata=${ROLE_BASE}/meta/main.yml
+cat << EOF > ${metadata}
+---
+# ${ROLE_NAME}: entry point for meta
+galaxy_info:
+  author: ${user_full_name}
+  description: Installs ${ROLE_NAME}
+  company: LyraPhase
+  license: MIT
+  min_ansible_version: 1.2
+  platforms:
+  # Platforms tested are uncommented, but it probably works on most CentOS/RHEL
+  #- name: EL
+  #  versions:
+  #     - all
+  #     - 5
+  #     - 6
+  #     - 7
+  # - name: GenericUNIX
+  #   versions:
+  #     - all
+  #     - any
+  # - name: Fedora
+  #   versions:
+  #     - all
+  #     - 16
+  #     - 17
+  #     - 18
+  #     - 19
+  #     - 20
+  # - name: opensuse
+  #   versions:
+  #     - all
+  #     - 12.1
+  #     - 12.2
+  #     - 12.3
+  #     - 13.1
+  #     - 13.2
+  # - name: Amazon
+  #   versions:
+  #     - all
+  #     - 2013.03
+  #     - 2013.09
+  # - name: GenericBSD
+  #   versions:
+  #     - all
+  #     - any
+  # - name: FreeBSD
+  #   versions:
+  #     - all
+  #     - 8.0
+  #     - 8.1
+  #     - 8.2
+  #     - 8.3
+  #     - 8.4
+  #     - 9.0
+  #     - 9.1
+  #     - 9.1
+  #     - 9.2
+  # - name: Ubuntu
+  #   versions:
+  #     - all
+  #     - lucid    # 10.04
+  #     - precise  # 12.04
+  #     - saucy    # 13.10
+  #     - trusty   # 14.04
+  #     - utopic   # 14.10
+  # - name: SLES
+  #   versions:
+  #     - all
+  #     - 10SP3
+  #     - 10SP4
+  #     - 11
+  #     - 11SP1
+  #     - 11SP2
+  #     - 11SP3
+  # - name: GenericLinux
+  #   versions:
+  #     - all
+  #     - any
+  # - name: Debian
+  #   versions:
+  #     - all
+  #     - etch
+  #     - lenny
+  #     - squeeze
+  #     - wheezy
+  # - name: Darwin
+  #   versions:
+  #     - all
+  categories:
+  #   - web
+  #   - system
+  #   - packaging
+  #   - networking
+  #   - monitoring
+  #   - development
+  #   - database:sql
+  #   - database:nosql
+  #   - database
+  #   - clustering
+  #   - cloud:rax
+  #   - cloud:gce
+  #   - cloud:ec2
+  #   - cloud
+  dependencies:
+  # Specify role dependencies here
+  # For foo
+  #  - foo
+#version: 0.0.1 ## Ansible 2.0 broke this. Uncomment if / when they ever fix ansible/ansible#13496
+EOF
+
+echo "${ROLE_NAME} skeleton created at ${ROLE_BASE}"
+let "length = $(echo "${ROLE_BASE}meta/main.yml" |  wc -m) + 3"
+msg="$(echo -ne "Please update: \n\n${ROLE_BASE}README.md\n  AND fill out \n\n${ROLE_BASE}meta/main.yml\n\n  with:\n  - dependencies (required!)\n - supported platforms (required!)\n - version (required!)\n - categories (optional unless publishing to Ansible Galaxy)" )"
+[ -x "$(which cowsay)" ] && cowsay -W $length "$msg" || echo "$msg"

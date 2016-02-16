@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# rm-known_hosts: Remove the specified host(s) from ~/.ssh/known_hosts
+#                      Useful when rebuilding a host, or when host key changes for some reason
+#                      & Ansible refuses to SSH due to changed host key
+# ---------------------------------
+REPO_BIN_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+if [ $# -lt 1 ]; then
+    underline=`tput smul`
+    nounderline=`tput rmul`
+    echo "" >&2
+    echo "" >&2
+    echo "Usage: $0 ${underline}host1.lan.37om.com${nounderline} ${underline}host2.lan.37om.com${nounderline} ${underline}...${nounderline}" >&2
+    echo "" >&2
+    echo "Remove all aliases of the specified host(s) from ~/.ssh/known_hosts" >&2
+    echo "" >&2
+    echo "Useful when rebuilding a host, or when host key changes for some reason" >&2
+    echo "& Ansible refuses to SSH due to changed host key" >&2
+    echo "" >&2
+    echo "host(s)           FQDN of Host(s) to remove from ~/.ssh/known_hosts" >&2
+    echo "                  Example: cat00-den.lan.37om.com dog01.lan.37om.com (with IPs: 123.63.61.74 and 64.6.15.67 respectively)" >&2
+    echo "                  Removes: cat00-den.lan.37om.com cat00-den.local cat00-den.lan cat00-den 123.63.61.74 dog01.lan.37om.com dog01.lan dog01 64.6.15.67" >&2
+    echo "" >&2
+    exit 1
+fi
+
+# Remove all aliases of HOST
+# (e.g.: Given: HOST=foo00-den.lan.37om.com IP=10.2.0.123,
+#       Remove: foo00-den.lan.37om.com, foo00-den.local foo00-den.lan, foo00-den, 10.2.0.123 )
+for HOST in "$@"
+do
+    ${REPO_BIN_DIR}/docker-run " ssh-keygen -R $HOST ; ssh-keygen -R ${HOST%%lan.37om.com}.local; ssh-keygen -R ${HOST%%.37om.com}.local; ssh-keygen -R ${HOST%%.37om.com} ; ssh-keygen -R ${HOST%%.lan.37om.com} ; ssh-keygen -R $(dig $HOST +short) "
+done
+

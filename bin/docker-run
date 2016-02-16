@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+# docker-run: run the given ansible command in a docker container
+# ---------------------------------
+# Debug logging for this script
+# To use: export DOCKER_RUN_LOG=DEBUG
+DOCKER_RUN_LOG="$(echo $DOCKER_RUN_LOG | tr '[a-z]' '[A-Z]')"
+if [[ "${DOCKER_RUN_LOG}" == "DEBUG" ]]; then
+  PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }' ## Debugging prompt (for bash -x || set -x)
+  set -x
+fi
+
+CONTAINER_ID="${CONTAINER_ID-trinitronx/ansible-base:v1.9.4}"
+
+REPO_BASE=$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )
+if [ $# -ge   1 ]; then
+   CMD=$@
+else
+   echo -n "Enter cmd: "
+   read CMD
+fi
+MY_UID=$(id -u)
+MY_GID=$(id -g)
+MY_GROUPNAME=$(id -gn)
+MY_USERNAME=$(id -un)
+# name to give the running container. Should be unique.
+CONTAINER_NAME=ansible_run.${MY_USERNAME}.${RANDOM}
+MY_HOSTNAME=$(hostname)   # Only used for warning message clarity
+
+RUN_SCRIPT=$(mktemp ${REPO_BASE}/dockerized_run.XXXXX)
+
+# Cleanup on exit
+trap "bash -c 'rm ${RUN_SCRIPT} ' &>/dev/null" EXIT HUP INT QUIT KILL TERM
+
+# HACK: this is to allow 'docker-run' to work when DNS is unavailable.
+# For environments without DNS, we use /etc/hosts.
+# The container needs the /etc/hosts file to find
+# machines.
+if [ -n "$DOCKER_NO_DNS" -a "$DOCKER_NO_DNS" == '1'  ]; then
+    DOCKER_RUN_ARGS="-v /etc/hosts:/etc/hosts ${DOCKER_RUN_ARGS:-}"
+fi
+
+# Hack for importing ssh-agent into docker-machine VM
+DOCKER_MACHINE_NAME=$(docker-machine active 2>/dev/null)
+
+if env | grep -q SSH_AUTH_SOCK && test -n "${DOCKER_MACHINE_NAME}"; then
+  # Setup SSH forwarding into docker host
+  # From https://gist.github.com/rcoup/53e8dee9f5ea27a51855
+  SSH_SOCK=docker.${DOCKER_MACHINE_NAME}.$$.ssh.socket
+
+  SSH_PORT=$(docker-machine inspect -f '{{.Driver.SSHPort}}' ${DOCKER_MACHINE_NAME})
+  [[ -z "$SSH_PORT" || "$SSH_PORT" == "<no value>" ]] && SSH_PORT=$(docker-machine inspect -f '{{.Driver.Driver.SSHPort}}' ${DOCKER_MACHINE_NAME})
+
+  # Most ssh options copied from docker-machine ssh
+  # Others:
+  #  -A - Enables forwarding of the authentication agent connection
+  #  -M - Places the ssh client into ``master'' mode for connection sharing
+  #  -S - Specifies the location of a control socket for connection sharing
+  #  -f - Requests ssh to go to background just before command execution
+  #  -n - Redirects stdin from /dev/null
+  #  tail -f /dev/null - command that never ends
+  ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa \
+    -o PasswordAuthentication=no \
+    -o IdentitiesOnly=yes \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o LogLevel=quiet \
+    -o ConnectionAttempts=3 \
+    -o ConnectTimeout=10 \
+    -p ${SSH_PORT} \
+    docker@localhost \
+    -A -M -S $SSH_SOCK -f -n \
+    tail -f /dev/null
+
+  ssh_forwarding_pid=$!
+  if test -z "${ssh_forwarding_pid}"; then
+    ssh_forwarding_pid=$(ps aux | grep 'ssh.*docker@localhost' | grep -v grep | head -n1 | awk '{print $2}')
+  fi
+
+  export DM_AGENT_SOCK=$(ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10 -S $SSH_SOCK docker@localhost echo \$SSH_AUTH_SOCK)
+  echo "INFO: Found $DM_AGENT_SOCK"
+  echo "INFO: Running ssh forwarding pid: $ssh_forwarding_pid"
+  # Try our best to kill the socket on exit
+  trap "bash -c 'ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10 -S $SSH_SOCK -O exit docker@localhost ; rm ${RUN_SCRIPT}; sleep 1; kill $ssh_forwarding_pid ; ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -p ${SSH_PORT} -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10  docker@localhost rm -f ${DM_AGENT_SOCK} ' &>/dev/null" EXIT HUP INT QUIT KILL TERM
+
+  # Check if DM_AGENT_SOCK exists in docker-machine VM
+  ssh -S $SSH_SOCK docker@localhost "[ -e \"$DM_AGENT_SOCK\" ]"
+  [ $? -eq 0 ] || echo "ERROR: DM_AGENT_SOCK path: $DM_AGENT_SOCK does not exist... could not forward SSH_AUTH_SOCK into docker-machine!  Is your ssh-agent running?"
+fi
+
+# If Docker Host is running ssh-agent, import SSH_AUTH_SOCK into container env
+if env | grep -q SSH_AUTH_SOCK ; then
+  SOCK_PATH="$SSH_AUTH_SOCK" # Default to passing through SSH_AUTH_SOCK (if on angus00.*)
+  # If docker-machine was detected, pass that socket through instead
+  env | grep -q DM_AGENT_SOCK && SOCK_PATH="$DM_AGENT_SOCK"
+  if [[ -z "$SOCK_PATH" || ( "${SOCK_PATH}" != "${DM_AGENT_SOCK}" && ! -e "$SOCK_PATH" ) ]]; then
+     echo "ERROR: SSH_AGENT_SOCK path: $SOCK_PATH does not exist... is your ssh-agent running?"
+  else
+    DOCKER_RUN_SSH_AGENT_ARGS="-v $(dirname $SOCK_PATH):/ssh-agent -e SSH_AUTH_SOCK=/ssh-agent/$(basename $SOCK_PATH)"
+    ANSIBLE_SSH_ARGS=" -o ForwardAgent=yes -o ControlPath=/tmp/ssh-%r@%h:%p -o ControlMaster=auto -o ControlPersist=60s ${ANSIBLE_SSH_ARGS:-}"
+    EXPORT_DOCKER_SSH_AGENT_AUTH_SOCK="export SSH_AUTH_SOCK=/ssh-agent/$(basename $SOCK_PATH) ; export ANSIBLE_SSH_ARGS=\"$ANSIBLE_SSH_ARGS\" ; "
+  fi
+fi
+
+# Create script to run inside docker container
+cat << EOF > ${RUN_SCRIPT}
+#!/usr/bin/env bash
+# Debug logging for ${RUN_SCRIPT}
+# To use: export DOCKER_RUN_ARGS='-e DOCKER_RUN_LOG=DEBUG'
+DOCKER_RUN_LOG="\$(echo $DOCKER_RUN_LOG | tr '[a-z]' '[A-Z]')"
+if [[ "\${DOCKER_RUN_LOG}" == "DEBUG" ]]; then
+  PS4='+(\${BASH_SOURCE}:\${LINENO}): \${FUNCNAME[0]:+\${FUNCNAME[0]}(): }' ## Debugging prompt (for bash -x || set -x)
+  set -x
+fi
+# Grab UID & GID from HEREDOC eval'd variables
+# These are set in docker-run, then hardcoded into this HEREDOC-generated script
+# All vars eval'd at this script runtime were escaped with backslash + dollar sign
+MY_UID=$MY_UID
+MY_GID=$MY_GID
+USERS_GID=\$(getent group users |cut -d: -f3)
+WHEEL_GID=\$(getent group wheel |cut -d: -f3)
+DOCKER_MACHINE_NAME=$DOCKER_MACHINE_NAME
+
+# Ugly hack to support boot2docker or VirtualBox shared volumes mounted with different UID & GID inside docker host & container
+# Reference: https://github.com/boot2docker/boot2docker/issues/581
+if stat --format=%g ${HOME} 2>&1 1>/dev/null ; then
+  stat_format_arg='--format='
+elif stat -f %g ${HOME} 2>&1 1>/dev/null; then
+  stat_format_arg='-f '
+else
+  echo "ERROR: Unsupported variant of 'stat' utility detected... not sure how to proceed"
+  exit 1
+fi
+
+MY_DIR_GID="\$(stat \${stat_format_arg}%g ${HOME})"
+MY_DIR_UID="\$(stat \${stat_format_arg}%u ${HOME})"
+
+if [ $MY_GID -ne \$MY_DIR_GID -o $MY_UID -ne \$MY_DIR_UID -a -n \$MY_DIR_GID -a -n \$MY_DIR_UID ]; then
+  echo "WARN: $HOME is not owned by same UID/GID as on $MY_HOSTNAME"
+  echo "WARN: This may be due to boot2docker or docker-machine auto-mounting /Users with different UID & GID..."
+  echo "INFO: If you are having permission issues when writing to /Users, try remounting the share as the UID/GID of your OSX user"
+  echo "INFO: For example:"
+  echo "        docker-machine ssh $DOCKER_MACHINE_NAME 'sudo mount -t vboxsf -o uid=$MY_UID,gid=$MY_GID Users /Users'"
+  if [[ "$HOME" == *"/Users/"* ]]; then
+    echo "WARN: Found '/Users/' in \\\$HOME ($HOME)... Assuming boot2docker or docker-machine did this."
+    echo "WARN: Re-setting UID & GID inside container to match volume: $HOME"
+    MY_UID=\$MY_DIR_UID
+    MY_GID=\$MY_DIR_GID
+    # Force GID from OSX host... gid 20 (staff) on OSX already used inside container (games)
+    echo "WARN: Allowing duplicate gid to be created via 'groupadd -o'"
+    groupadd_args='-o'
+  fi
+fi
+
+if env | grep -q SSH_AUTH_SOCK ; then
+  # Fix SSH_AUTH_SOCK permissions inside container
+  SSH_AUTH_SOCK_GID="\$(stat \${stat_format_arg}%g \${SSH_AUTH_SOCK})"
+  SSH_AUTH_SOCK_UID="\$(stat \${stat_format_arg}%u \${SSH_AUTH_SOCK})"
+  if [ -n \$SSH_AUTH_SOCK -a $MY_GID -ne \$SSH_AUTH_SOCK_GID -o $MY_UID -ne \$SSH_AUTH_SOCK_UID -a -n \$SSH_AUTH_SOCK_GID -a -n \$SSH_AUTH_SOCK_UID ]; then
+    setfacl -m ${MY_UID}:rx  \$(dirname "\$SSH_AUTH_SOCK") ;
+    setfacl -m ${MY_UID}:rwx "\$SSH_AUTH_SOCK" ;
+    setfacl -m ${MY_GID}:rwx "\$SSH_AUTH_SOCK" ;
+  fi
+fi
+
+# Create user & group with names matching host, GID/UID matching volume permissions (ideally)
+if (! egrep -q "^${MY_GROUPNAME}:x:\${MY_GID}:" /etc/group); then
+    groupadd \${groupadd_args} -g \${MY_GID} ${MY_GROUPNAME}
+fi
+useradd -u \${MY_UID} -g \${MY_GID} -G \${USERS_GID}\${WHEEL_GID:+,\${WHEEL_GID}} -d ${HOME} -M ${MY_USERNAME}
+
+su - ${MY_USERNAME} -c \
+'$EXPORT_DOCKER_SSH_AGENT_AUTH_SOCK cd ${REPO_BASE} && \
+source bin/setup-ansible-env.sh && [ -e /opt/ansible/ansible/hacking/env-setup ] && source /opt/ansible/ansible/hacking/env-setup ; \
+${CMD}'
+EOF
+
+chmod +x ${RUN_SCRIPT}
+docker run -ti --rm=true -v ${REPO_BASE}:${REPO_BASE} -v ${HOME}:${HOME} ${DOCKER_RUN_SSH_AGENT_ARGS:-} ${DOCKER_RUN_ARGS:-} --name="${CONTAINER_NAME}" ${CONTAINER_ID} ${RUN_SCRIPT}
+RET=$?
+rm ${RUN_SCRIPT}
+exit $RET
