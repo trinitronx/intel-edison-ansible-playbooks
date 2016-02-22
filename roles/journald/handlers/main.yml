@@ -1,0 +1,8 @@
+---
+# journald: entry point for handlers
+
+- name: restart systemd-journald
+  service: >
+    name=systemd-journald
+    state=restarted
+
