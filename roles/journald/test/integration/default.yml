@@ -1,0 +1,14 @@
+---
+# This playbook deploys the journald role for testing
+
+- hosts: test-kitchen
+  user: root
+  pre_tasks:
+#  - name: be sure libselinux-python are installed
+#    yum: >
+#      name=libselinux-python
+#      state=present
+#    when: ansible_os_family == "RedHat"
+
+  roles:
+    - journald

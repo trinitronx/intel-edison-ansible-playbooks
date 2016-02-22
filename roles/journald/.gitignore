@@ -1,0 +1,18 @@
+.vagrant
+Ansiblefile.lock
+
+*~
+*#
+.#*
+\#*#
+.*.sw[a-z]
+*.un~
+pkg/
+
+# Bundler
+Gemfile.lock
+bin/*
+.bundle/*
+
+# Test Kitchen
+.kitchen/

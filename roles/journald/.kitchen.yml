@@ -1,0 +1,74 @@
+---
+driver:
+  name: vagrant
+  <% unless ENV['KITCHEN_HTTP_PROXY'].nil? %>
+  network:
+    - ["private_network", {type: "dhcp"}]
+  http_proxy: <%= ENV['KITCHEN_HTTP_PROXY'] %>
+  <% end %>
+  <% unless ENV['KITCHEN_HTTP_PROXY'].nil? && ENV['KITCHEN_HTTPS_PROXY'].nil? %>
+  https_proxy: <%= ENV['KITCHEN_HTTPS_PROXY'].nil? ? ENV['KITCHEN_HTTP_PROXY'] : ENV['KITCHEN_HTTPS_PROXY'] %>
+  <% end %>
+
+
+provisioner:
+#  ansible_platform: ubuntu
+  name: ansible_playbook
+#  roles_path:
+  hosts: test-kitchen
+  require_ansible_repo: false
+  require_ansible_omnibus: true
+  ansible_omnibus_url: https://gist.githubusercontent.com/trinitronx/bdfd3cbb338767e58299/raw/18d8d94b5e34bda7133e3a568ba2552171757930/ansible_install.sh
+  require_chef_for_busser: true
+  require_ruby_for_busser: false
+#  ansible_check: true
+  ansible_diff: true
+  ansible_verbose: true
+  ansible_verbosity: 2
+  ansible_extra_flags: <%= ENV['ANSIBLE_EXTRA_FLAGS'] %>
+  sudo: true
+  # playbook: default.yml
+  idempotency_test: true
+  #extra_vars:
+  #  a: b
+  #requirements_path: requirements.yml
+  <% unless ENV['KITCHEN_HTTP_PROXY'].nil? && ENV['KITCHEN_HTTPS_PROXY'].nil? %>
+  chef_omnibus_url: http://www.getchef.com/chef/install.sh
+  client_rb:
+    http_proxy: <%= ENV['KITCHEN_HTTP_PROXY'] %>
+    https_proxy: <%= ENV['KITCHEN_HTTPS_PROXY'].nil? ? ENV['KITCHEN_HTTP_PROXY'] : ENV['KITCHEN_HTTPS_PROXY'] %>
+  <% end %>
+
+
+platforms:
+  #- name: ubuntu-10.04 # lucid ## EOL 2015-04-30
+  - name: ubuntu-12.04 # precise
+  #- name: ubuntu-13.10 # saucy ## EOL 2014-07-17
+  - name: ubuntu-14.04 # trusty
+  - name: ubuntu-15.04 # vivid
+  #- name: ubuntu-15.10 # wily # No bento box yet
+  # - name: centos-5.10 # TODO: NOT TESTED YET... unsure if kitchen-ansible works yet...
+  #- name: centos-6.4 ## Docker NOT supported on this platform...
+     ## docker run for busybox container ALWAYS fails due to: https://github.com/docker/docker/issues/5684
+  - name: centos-6.5
+  - name: centos-7.0
+  # - name: nocm_centos-6.5
+  #   driver_plugin: vagrant
+  #   driver_config:
+  #     box: nocm_centos-6.5
+  #     box_url: http://puppet-vagrant-boxes.puppetlabs.com/centos-65-x64-virtualbox-nocm.box
+      # network:
+      #  - ['forwarded_port', {guest: 8080, host: 8080}]
+      #  - [ 'private_network', { ip: '192.168.33.11' } ]
+
+suites:
+- name: default
+#- name: default-install-latest
+#  provisioner:
+#    playbook: test/integration/default-install-latest.yml
+#- name: binary-install
+#  provisioner:
+#    extra_vars:
+#      docker_install_method: binary
+#      docker_prefix: /usr/local
+#      docker_other_args: -g /usr/local/lib/docker
