@@ -1,0 +1,14 @@
+---
+# This playbook bootstraps an Intel Edison with base settings
+
+- hosts: edisons
+  user: root
+  pre_tasks:
+#  - name: be sure libselinux-python are installed
+#    yum: >
+#      name=libselinux-python
+#      state=present
+#    when: ansible_os_family == "RedHat"
+
+  roles:
+    - journald
