@@ -1,2 +1,4 @@
 ---
 # journald: entry point for defaults
+journald_conf_settings:
+  storage: persistent

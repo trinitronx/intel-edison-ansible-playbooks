@@ -29,7 +29,7 @@ The default role variables in `defaults/main.yml` are:
     ---
     # journald: entry point for defaults
     journald_conf_settings:
-      system_max_use: 1M
+      storage: persistent
 
 
 Dependencies
