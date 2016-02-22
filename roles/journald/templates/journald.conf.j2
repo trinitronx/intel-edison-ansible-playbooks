@@ -8,7 +8,7 @@
 # See journald.conf(5) for details
 
 [Journal]
-Storage=persistent
+#Storage=persistent
 #Compress=yes
 #Seal=yes
 #SplitMode=login
@@ -33,4 +33,8 @@ Storage=persistent
 #MaxLevelKMsg=notice
 #MaxLevelConsole=info
 #MaxLevelWall=emerg
-
+{%  if journald_conf_settings is defined and journald_conf_settings is mapping -%}
+{%    for key, value in journald_conf_settings.iteritems() -%}
+{{      key.split('_')|map('title')|join('') }}={{ value }}
+{%    endfor -%}
+{%  endif -%}
