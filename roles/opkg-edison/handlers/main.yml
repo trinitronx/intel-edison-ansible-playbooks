@@ -1,0 +1,17 @@
+---
+# opkg-edison: entry point for handlers
+# This should fix any weird opkg cache bugs
+# Use this if you're seeing 0 packages for a repo,
+- name: destroy opkg cache
+  file: >
+    path=/var/lib/opkg
+    force=yes
+    state=absent
+
+- name: opkg update
+  shell: opkg update
+  always_run: true
+  register: opkg_makecache_result
+  until: opkg_makecache_result.rc == 0
+  retries: 3
+  delay: 1
