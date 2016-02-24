@@ -13,6 +13,11 @@
   roles:
     - journald
   tasks:
+    ## TODO: Ensure that packages are of latest version (or version we build against)
+    ##  - mraa 0.7.5.60
+    ##  - upm 0.4.1
+    ##  - oobe 1.2.0-r0
+    ##  - xdk-daemon 0.0.35-r0 # (dev only)
     - name: Upgrade Intel packages
       opkg: >
         name={{ item }}
