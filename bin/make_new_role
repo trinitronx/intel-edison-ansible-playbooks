@@ -50,7 +50,7 @@ echo "# ${ROLE_NAME}: Tasks entry point. Called by main.yml " >> ${task_base}/${
 echo '---' > ${task_base}/main.yml
 echo "# ${ROLE_NAME}: entry point for tasks" >> ${task_base}/main.yml
 echo "#                 Generally only include other file(s) and add tags here." >> ${task_base}/main.yml
-echo -e "\n- include: ${ROLE_NAME}.yml tags=${ROLE_NAME}" >> ${task_base}/main.yml
+echo -e "\n- include: ${ROLE_NAME}.yml\n  tags: ${ROLE_NAME}" >> ${task_base}/main.yml
 
 # create a basic README.md
 escaped_role_name=$(echo ${ROLE_NAME} | sed -e 's/_/\\_/g')
