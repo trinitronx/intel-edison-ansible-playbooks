@@ -12,3 +12,12 @@
 
   roles:
     - journald
+  tasks:
+    - name: Upgrade Intel packages
+      opkg: >
+        name={{ item }}
+        state=installed
+      with_items:
+        - upm
+        - mraa
+        - oobe
