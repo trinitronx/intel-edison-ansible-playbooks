@@ -8,7 +8,6 @@
     - "../vars/{{ ansible_distribution }}.yml"
     - "../vars/{{ ansible_os_family }}.yml"
     - "../vars/default.yml"
-  when: journald_conf_settings is not defined
 
 - name: Configure journald
   template: >
