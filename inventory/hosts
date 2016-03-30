@@ -7,3 +7,4 @@ boot2docker.local ansible_ssh_port=2022 ansible_ssh_host=127.0.0.1 ansible_ssh_u
 [edisons]
 mu-lyrae.local
 eta-lyrae.local
+gamma-lyrae.local
