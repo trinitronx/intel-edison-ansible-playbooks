@@ -1,0 +1,5 @@
+# default.yml - default vars for unsupported / unknown OS
+# (Assumes this is Intel Edison Yocto Image)
+journald_conf_settings:
+  storage: persistent
+  system_max_use: 70M
