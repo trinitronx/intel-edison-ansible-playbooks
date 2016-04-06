@@ -20,22 +20,24 @@ when 'redhat'
   #docker_service_config = '/etc/sysconfig/docker'
   #docker_storage_config = '/etc/sysconfig/docker-storage'
   package_manager = 'yum'
-  #case os[:release].to_f
+  case os[:release].to_f
   #when 5.10
   #  docker_pkgname = 'docker-io'
   #when 6.4
   #  docker_pkgname = 'docker-io'
-  #when 6.5
-  #  docker_pkgname = 'docker-io'
-  #when 7
-  #  docker_pkgname = 'docker'
+  when (1..6.9)
+    raise "SystemD is unsupported on this platform: #{os[:family]} #{os[:release]}"
+  when 7
+    journald_pkgname = 'systemd'
   #when 19 # Fedora
   #  docker_pkgname = 'docker-io'
-  #end
+  end
 when 'ubuntu'
   package_manager = 'apt'
   #docker_service_config = '/etc/default/docker'
   #docker_storage_config = '/etc/default/docker-storage'
+  journald_pkgname = 'systemd'
+
   #if system('apt-cache search docker.io | grep -qi container')
   #  docker_pkgname = 'docker.io'
   #else
@@ -43,6 +45,7 @@ when 'ubuntu'
   #end
 when 'debian'
   package_manager = 'apt'
+  journald_pkgname = 'systemd'
   #docker_service_config = '/etc/sysconfig/docker'
   #docker_storage_config = '/etc/sysconfig/docker-storage'
   #docker_pkgname = 'docker.io'
