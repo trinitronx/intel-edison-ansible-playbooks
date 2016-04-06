@@ -18,6 +18,7 @@
     ##  - upm 0.4.1
     ##  - oobe 1.2.0-r0
     ##  - xdk-daemon 0.0.35-r0 # (dev only)
+    ## TODO: Fix terminal size issue when using serial console: stty rows 46 cols 300
     - name: Upgrade Intel packages
       opkg: >
         name={{ item }}
