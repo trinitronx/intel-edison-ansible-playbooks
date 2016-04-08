@@ -8,10 +8,16 @@
     force=yes
     state=absent
 
+- name: create opkg cache dir
+  file: >
+    path=/var/lib/opkg
+    force=yes
+    state=directory
+
 - name: opkg update
   shell: opkg update
   always_run: true
   register: opkg_makecache_result
-  until: opkg_makecache_result.rc == 0
+  until: opkg_makecache_result is defined and opkg_makecache_result.rc == 0
   retries: 3
   delay: 1

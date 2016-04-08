@@ -17,9 +17,10 @@
     owner=root
     group=root
     mode=0644
-  with_items: opkg_repo_files
+  with_items: "{{ opkg_repo_files }}"
   notify:
     - destroy opkg cache
+    - create opkg cache dir
     - opkg update
 
 # Run yum makecache handlers immediately
