@@ -3,3 +3,4 @@
 opkg_repo_files:
     - base-feed.conf
     - iotkit.conf
+    - alext-repos.conf
