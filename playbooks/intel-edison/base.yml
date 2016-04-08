@@ -11,6 +11,7 @@
 #    when: ansible_os_family == "RedHat"
 
   roles:
+    - opkg-edison
     - journald
   tasks:
     ## TODO: Ensure that packages are of latest version (or version we build against)
@@ -27,3 +28,7 @@
         - upm
         - mraa
         - oobe
+      tags:
+        - opkg_upgrade
+        - packages
+        - upgrade_packages
