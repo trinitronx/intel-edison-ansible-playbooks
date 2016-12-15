@@ -9,7 +9,7 @@ if [[ "${DOCKER_RUN_LOG}" == "DEBUG" ]]; then
   set -x
 fi
 
-CONTAINER_ID="${CONTAINER_ID-trinitronx/ansible-base:v1.9.4}"
+CONTAINER_ID="${CONTAINER_ID-trinitronx/ansible-base:devel-centos7-2.3.0}"
 
 REPO_BASE=$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )
 if [ $# -ge   1 ]; then
