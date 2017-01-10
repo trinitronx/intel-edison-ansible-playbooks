@@ -106,7 +106,22 @@ if env | grep -q SSH_AUTH_SOCK ; then
   fi
 fi
 
-# Create script to run inside docker container
+# If CMD passed is init, avoid using RUN_SCRIPT
+if [[ "$CMD" == *"/init" ]]; then
+  # For first 'docker run', just run the init process as pid 1
+  RUN_SCRIPT="$CMD"
+  # Spawn the init process as a background container
+  DOCKER_INTERACT_ARGS='-d'
+  echo "INFO: Detected that you are running an init container"
+  echo "WARN: Running background init container in detached mode"
+  echo "WARN: You will need to re-run this script with CMD=bash to exec into it"
+  echo "WARN: This container is long-lived and will require you to stop it manually when you are done!"
+  # If we are using docker-machine / boot2docker, then ensure the VM has DBus installed
+  [ -n "$DOCKER_MACHINE_NAME" ] && docker-machine ssh dm 'tce-status -i | grep -q dbus || tce-load -wi dbus'
+else
+  DOCKER_INTERACT_ARGS='-ti --rm=true'
+
+  # Create script to run inside docker container
 cat << EOF > ${RUN_SCRIPT}
 #!/usr/bin/env bash
 # Debug logging for ${RUN_SCRIPT}
@@ -179,8 +194,27 @@ source bin/setup-ansible-env.sh && [ -e /opt/ansible/ansible/hacking/env-setup ]
 ${CMD}'
 EOF
 
-chmod +x ${RUN_SCRIPT}
-docker run -ti --rm=true -v ${REPO_BASE}:${REPO_BASE} -v ${HOME}:${HOME} --name="${CONTAINER_NAME}" ${DOCKER_RUN_SSH_AGENT_ARGS:-} ${DOCKER_RUN_ARGS:-} ${CONTAINER_ID} ${RUN_SCRIPT}
-RET=$?
-rm ${RUN_SCRIPT}
+fi # End init check
+
+[[ "$CMD" == *"/init" ]] || chmod +x ${RUN_SCRIPT}
+# Check for previously spawned init container
+# If init container is running, exec into that, otherwise run the RUN_SCRIPT as normal
+RUNNING_CONTAINERS="$(docker ps --filter status=running --format '{{.Names}}' | grep "ansible_run.$USER")"
+
+# Use first found init container
+for container_name in $RUNNING_CONTAINERS; do
+  if docker inspect --format '{{.Config.Cmd}}' $container_name | grep -Eq '.*/init' ; then
+    EXEC_CONTAINER="$container_name"
+    break
+  fi 
+done
+
+if [ -n "$EXEC_CONTAINER" ]; then
+  docker exec ${DOCKER_INTERACT_ARGS:-} ${EXEC_CONTAINER} ${RUN_SCRIPT}
+  RET=$?
+else
+  docker run ${DOCKER_INTERACT_ARGS:-} -v ${REPO_BASE}:${REPO_BASE} -v ${HOME}:${HOME} --name="${CONTAINER_NAME}" ${DOCKER_RUN_SSH_AGENT_ARGS:-} ${DOCKER_RUN_ARGS:-} ${CONTAINER_ID} ${RUN_SCRIPT}
+  RET=$?
+  rm ${RUN_SCRIPT}
+fi
 exit $RET
