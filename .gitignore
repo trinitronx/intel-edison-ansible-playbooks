@@ -5,6 +5,8 @@
 # Editors/IDEs #
 ################
 *.swp
+*.swo
+*.swn
 *~
 \#*
 .\#*
@@ -27,6 +29,11 @@
 *.o
 *.so
 /Gemfile.lock
+
+# Python bytecode #
+###################
+*.pyc
+*.pyo
 
 # Dev/Testing tools #
 #####################
