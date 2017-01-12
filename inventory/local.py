@@ -20,8 +20,8 @@ ANSIBLE_INV = {
 import argparse
 import json
 import sys
-sys.path.append('../rpi/')
-import rpi_detector
+sys.path.append('lib/python/site-packages/')
+import rpi
 
 def output_list_inventory(json_output):
     '''
@@ -51,9 +51,9 @@ def main():
     ansible_host = cli_args.ansible_host
 
 # Finding RPi
-    rpi_detector.run()
-    ANSIBLE_INV= rpi_detector.var_gen_inv()
-    HOST_VARS = rpi_detector.var_gen_host()
+    rpi.rpi_detector.run()
+    ANSIBLE_INV= rpi.rpi_detector.var_gen_inv()
+    HOST_VARS = rpi.rpi_detector.var_gen_host()
 
 
     if list_inventory:
