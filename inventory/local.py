@@ -20,7 +20,8 @@ ANSIBLE_INV = {
 import argparse
 import json
 import sys
-sys.path.append('lib/python/site-packages/')
+from os import path
+sys.path.append(path.join(path.dirname(__file__), 'lib/python/site-packages/'))
 import rpi
 
 def output_list_inventory(json_output):
