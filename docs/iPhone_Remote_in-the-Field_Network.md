@@ -9,6 +9,11 @@ The goal of this guide is to show how to set up an "in the field" networking set
  - 2x [Intel Edison](https://en.wikipedia.org/wiki/Intel_Edison) chips
  - 1x [Arduino Breakout Board](https://en.wikipedia.org/wiki/Intel_Edison#Arduino_board) (Optional, but makes the WiFi AP setup easier due to included `PWR` button)
 
+Network Diagram
+===============
+
+![iPhone remote in-the-field Network Diagram](https://www.lucidchart.com/publicSegments/view/c9b0b5e0-2b19-41ac-9381-d58cd837f044/image.png)
+
 Steps:
 ======
 
