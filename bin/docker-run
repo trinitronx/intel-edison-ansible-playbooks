@@ -52,6 +52,74 @@ if env | grep -q SSH_AUTH_SOCK && test -n "${DOCKER_MACHINE_NAME}"; then
   SSH_PORT=$(docker-machine inspect -f '{{.Driver.SSHPort}}' ${DOCKER_MACHINE_NAME})
   [[ -z "$SSH_PORT" || "$SSH_PORT" == "<no value>" ]] && SSH_PORT=$(docker-machine inspect -f '{{.Driver.Driver.SSHPort}}' ${DOCKER_MACHINE_NAME})
 
+  # Support for docker-xhyve-driver + docker-machine
+  # Detect the IP of the VM to SSH into for ssh-agent forwarding
+  DM_HOST=$(docker-machine inspect -f '{{.Driver.IPAddress}}' ${DOCKER_MACHINE_NAME})
+  [[ -z "$DM_HOST" || "$DM_HOST" == "<no value>" ]] && DM_HOST=$(docker-machine inspect -f '{{.Driver.Driver.IPAddress}}' ${DOCKER_MACHINE_NAME})
+  # Test an SSH connection to the docker machine VM via IPAddress first... 
+  # if this does not work, it is likely that virtualbox driver is being used, and
+  # VBoxHeadless process has grabbed a port listening on the Host's SSH_PORT, probably with 127.0.0.1 loopback (host-only networking)
+  # However, this is dynamic depending on the user's docker-machine driver and VirtualBox network settings (in the case of virtualbox)
+  # so we must grab the listening interface IP manually
+  if ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10 \
+    -p ${SSH_PORT} docker@${DM_HOST} "echo ssh-success for docker@${DM_HOST}:${SSH_PORT}"
+  then
+    # Pass... we may use docker@${DM_HOST}:${SSH_PORT}
+    echo "INFO: Found docker-machine VM listening on ${DM_HOST}:${SSH_PORT}"
+  else
+    # Detect the interface for DM_HOST
+    # Since output varies for lsof depending on bridge & virtual interfaces, parse just the last IPv4 Address on the end
+    # Example Pattterns to match: 
+    #  n127.0.0.1:64086
+    #  n192.168.1.129:59584->52.91.196.94:ssh
+    #
+    LSOF_PATTERN_REGEX='n((.*?):.*?->)?(.*?):.*'
+    # Passing in at least -F 'n' to lsof shows all TCP interface:port lines beginning with character 'n'
+    DM_HOST_CANDIDATES=$(lsof -F 'PnLt' -n -i:$SSH_PORT | grep -E '^n')
+    DM_HOST_CANDIDATES_REAL_IP=$(echo -ne "$DM_HOST_CANDIDATES" | perl -n -e "if (m/^n/) { s/${LSOF_PATTERN_REGEX}/\3/; print $_ ; }" | uniq)
+    DM_HOST_CANDIDATES_BRIDGE_IP=$(echo -ne "$DM_HOST_CANDIDATES" | perl -n -e "if (m/^n/) { s/${LSOF_PATTERN_REGEX}/\2/; print $_ ; }" | uniq)
+    # If we get more than one, we must search through the list of interfaces to find the right one
+    # Finding the right one can be problematic depending on docker-machine driver's implementation of networking, and whether host is also running sshd
+    if [ "$(echo "$DM_HOST_CANDIDATES_REAL_IP" | wc -l )" -eq 1 ]; then
+      DM_HOST=$DM_HOST_CANDIDATES_REAL_IP
+    elif echo "$DM_HOST_CANDIDATES_REAL_IP" | grep -q -c "127.0.0.1" && \
+         ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10 \
+    -p ${SSH_PORT} docker@127.0.0.1 "docker version"
+    then
+      # Localhost listener takes priority, as this is most likely VBoxHeadless
+      DM_HOST='127.0.0.1'
+    else
+      echo "INFO: Found multiple docker-machine VM candidates listening on $SSH_PORT"
+      if echo "$DM_HOST_CANDIDATES_REAL_IP" | grep -q -c "$(docker-machine ip ${DOCKER_MACHINE_NAME})"; then
+        echo "INFO: Found docker-machine VM candidate matching 'docker-machine ip ${DOCKER_MACHINE_NAME}'"
+        DM_HOST=$(echo "$DM_HOST_CANDIDATES_REAL_IP" | grep "$(docker-machine ip ${DOCKER_MACHINE_NAME})")
+      else
+        # Loop through haphazardly hoping we guess right
+        for iface in $(ifconfig -l) ; do
+          for ip in $DM_HOST_CANDIDATES_BRIDGE_IP; do
+            if ifconfig $iface | grep $ip ; then
+              # Now we know the interface and bridge IP
+              # Figure out what the listening IP was
+              docker_host_real_ip=$(echo "$DM_HOST_CANDIDATES" | grep $ip | perl -n -e "if (m/^n/) { s/${LSOF_PATTERN_REGEX}/\3/; print $_ ; }" | uniq)
+              echo "INFO: Trying to detect docker on ${DM_HOST}:${SSH_PORT}"
+
+              if ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10 \
+    -p ${SSH_PORT} docker@${docker_host_real_ip} "docker version"
+              then
+                echo "INFO: Found docker-machine VM listening on ${DM_HOST}:${SSH_PORT}"
+                DM_HOST="$docker_host_real_ip"
+                break
+              fi
+            fi
+          done
+        done
+      fi
+    fi
+  fi
+
   # Most ssh options copied from docker-machine ssh
   # Others:
   #  -A - Enables forwarding of the authentication agent connection
@@ -69,25 +137,36 @@ if env | grep -q SSH_AUTH_SOCK && test -n "${DOCKER_MACHINE_NAME}"; then
     -o ConnectionAttempts=3 \
     -o ConnectTimeout=10 \
     -p ${SSH_PORT} \
-    docker@localhost \
+    docker@${DM_HOST} \
     -A -M -S $SSH_SOCK -f -n \
     tail -f /dev/null
 
   ssh_forwarding_pid=$!
   if test -z "${ssh_forwarding_pid}"; then
-    ssh_forwarding_pid=$(ps aux | grep 'ssh.*docker@localhost' | grep -v grep | head -n1 | awk '{print $2}')
+    ssh_forwarding_pid=$(ps aux | grep "ssh.*docker@${DM_HOST}" | grep -v grep | head -n1 | awk '{print $2}')
   fi
 
-  export DM_AGENT_SOCK=$(ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10 -S $SSH_SOCK docker@localhost echo \$SSH_AUTH_SOCK)
+  export DM_AGENT_SOCK=$(ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10 -S $SSH_SOCK docker@${DM_HOST} echo \$SSH_AUTH_SOCK)
   echo "INFO: Found $DM_AGENT_SOCK"
   echo "INFO: Running ssh forwarding pid: $ssh_forwarding_pid"
   # Try our best to kill the socket on exit
-  trap "bash -c 'ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10 -S $SSH_SOCK -O exit docker@localhost ; rm ${RUN_SCRIPT}; sleep 1; kill $ssh_forwarding_pid ; ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -p ${SSH_PORT} -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10  docker@localhost rm -f ${DM_AGENT_SOCK} ' &>/dev/null" EXIT HUP INT QUIT KILL TERM
+  trap "bash -c 'ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10 -S $SSH_SOCK -O exit docker@${DM_HOST} ; rm ${RUN_SCRIPT}; sleep 1; kill $ssh_forwarding_pid ; ssh -i $HOME/.docker/machine/machines/${DOCKER_MACHINE_NAME}/id_rsa -p ${SSH_PORT} -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o LogLevel=quiet -o ConnectionAttempts=3 -o ConnectTimeout=10  docker@${DM_HOST} rm -f ${DM_AGENT_SOCK} ' &>/dev/null" EXIT HUP INT QUIT KILL TERM
 
   # Check if DM_AGENT_SOCK exists in docker-machine VM
-  ssh -S $SSH_SOCK docker@localhost "[ -e \"$DM_AGENT_SOCK\" ]"
+  ssh -S $SSH_SOCK docker@${DM_HOST} "[ -e \"$DM_AGENT_SOCK\" ]"
   [ $? -eq 0 ] || echo "ERROR: DM_AGENT_SOCK path: $DM_AGENT_SOCK does not exist... could not forward SSH_AUTH_SOCK into docker-machine!  Is your ssh-agent running?"
 fi
+
+# TODO: Figure out some way of supporting "Docker for Mac" to pass through ssh-agent socket?
+#       As the latest version of OSX native Docker does not support socket communication over the Hypervisor boundary, we're stuck!
+#       The official documentation states:
+#         "Socket files and named pipes only transmit between containers and between OS X processes – no transmission across the hypervisor is supported, yet."
+# References:
+#   - https://docs.docker.com/docker-for-mac/osxfs/#file-types
+#   - https://github.com/docker/for-mac/issues/410
+#   - https://github.com/docker/for-mac/issues/483
+#   - https://docs.docker.com/docker-for-mac/troubleshoot/#/known-issues
+# TODO: Watch these bug tickets to see if they add it ^^
 
 # If Docker Host is running ssh-agent, import SSH_AUTH_SOCK into container env
 if env | grep -q SSH_AUTH_SOCK ; then
