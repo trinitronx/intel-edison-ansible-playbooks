@@ -196,7 +196,7 @@ if [[ "$CMD" == *"/init" ]]; then
   echo "WARN: You will need to re-run this script with CMD=bash to exec into it"
   echo "WARN: This container is long-lived and will require you to stop it manually when you are done!"
   # If we are using docker-machine / boot2docker, then ensure the VM has DBus installed
-  [ -n "$DOCKER_MACHINE_NAME" ] && docker-machine ssh dm 'tce-status -i | grep -q dbus || tce-load -wi dbus'
+  [ -n "$DOCKER_MACHINE_NAME" ] && docker-machine ssh $DOCKER_MACHINE_NAME 'tce-status -i | grep -q dbus || tce-load -wi dbus'
 else
   DOCKER_INTERACT_ARGS='-ti --rm=true'
 
