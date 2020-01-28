@@ -205,7 +205,7 @@ cat << EOF > ${RUN_SCRIPT}
 #!/usr/bin/env bash
 # Debug logging for ${RUN_SCRIPT}
 # To use: export DOCKER_RUN_ARGS='-e DOCKER_RUN_LOG=DEBUG'
-DOCKER_RUN_LOG="\$(echo $DOCKER_RUN_LOG | tr '[a-z]' '[A-Z]')"
+DOCKER_RUN_LOG="\$(echo \$DOCKER_RUN_LOG | tr '[a-z]' '[A-Z]')"
 if [[ "\${DOCKER_RUN_LOG}" == "DEBUG" ]]; then
   PS4='+(\${BASH_SOURCE}:\${LINENO}): \${FUNCNAME[0]:+\${FUNCNAME[0]}(): }' ## Debugging prompt (for bash -x || set -x)
   set -x
