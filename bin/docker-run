@@ -235,10 +235,12 @@ MY_DIR_UID="\$(stat \${stat_format_arg}%u ${HOME})"
 
 if [ $MY_GID -ne \$MY_DIR_GID -o $MY_UID -ne \$MY_DIR_UID -a -n \$MY_DIR_GID -a -n \$MY_DIR_UID ]; then
   echo "WARN: $HOME is not owned by same UID/GID as on $MY_HOSTNAME"
-  echo "WARN: This may be due to boot2docker or docker-machine auto-mounting /Users with different UID & GID..."
-  echo "INFO: If you are having permission issues when writing to /Users, try remounting the share as the UID/GID of your OSX user"
-  echo "INFO: For example:"
-  echo "        docker-machine ssh $DOCKER_MACHINE_NAME 'sudo mount -t vboxsf -o uid=$MY_UID,gid=$MY_GID Users /Users'"
+  if [ -n "\$DOCKER_MACHINE_NAME" ]; then
+    echo "WARN: This may be due to boot2docker or docker-machine auto-mounting /Users with different UID & GID..."
+    echo "INFO: If you are having permission issues when writing to /Users, try remounting the share as the UID/GID of your OSX user"
+    echo "INFO: For example:"
+    echo "        docker-machine ssh $DOCKER_MACHINE_NAME 'sudo mount -t vboxsf -o uid=$MY_UID,gid=$MY_GID Users /Users'"
+  fi
   if [[ "$HOME" == *"/Users/"* ]]; then
     echo "WARN: Found '/Users/' in \\\$HOME ($HOME)... Assuming boot2docker or docker-machine did this."
     echo "WARN: Re-setting UID & GID inside container to match volume: $HOME"
