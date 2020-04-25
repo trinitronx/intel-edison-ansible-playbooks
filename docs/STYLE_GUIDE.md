@@ -1,5 +1,5 @@
-Return Path Ansible Style Guide
-===============================
+Ansible Style Guide
+===================
 
 This document is intended to be a superset of the [Ansible Best Practices](http://docs.ansible.com/playbooks_best_practices.html) document.
 
