@@ -1,5 +1,6 @@
-ops-ansible-playbooks
-=====================
+intel-edison-ansible-playbooks
+==============================
+
 This repository contains all of the Ansible-based
 playbooks used for Intel Edison staging activities
 
