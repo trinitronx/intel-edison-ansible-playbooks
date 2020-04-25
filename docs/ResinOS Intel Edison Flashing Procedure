@@ -1,0 +1,23 @@
+ResinOS Intel Edison Flashing Procedure
+=======================================
+
+1. Download ResinOS `dev` image from resin.io
+2. Unzip files to a temporary directory:
+
+        `unzip -d /tmp/resin-resin2edisontest-2.0.5+rev1-dev-v4.2.2 ~/Downloads/resin-resin2edisontest-2.0.5+rev1-dev-v4.2.2.zip`
+
+3. `chmod +x ./flashall.sh && ./flashall.sh`
+4. Wait for flashing process to complete
+5. Connect to serial console via `bloop c` or screen
+6. `systemctl stop ModemManager`
+7. If above step fails, either:
+  - Wait for Edison to come up on the network & SSH in, then issue command
+  - Or unplug & re-plug board, reconnect to serial console, login as `root` & manually type fast `systemctl stop ModemManager` (may take a couple tries... ignore the weird characters being spit onto the console.. those are from ModemManager which we are trying to disable)
+7. Completely disable ModemManager from future boots:
+
+        mount -o remount,rw /
+        systemctl disable ModemManager
+        systemctl mask ModemManager
+        systemctl reboot
+
+8. 
