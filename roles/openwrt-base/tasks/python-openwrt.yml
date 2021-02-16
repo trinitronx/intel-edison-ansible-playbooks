@@ -38,7 +38,6 @@
 # Bootstrap python interpreter for Ansible
 - name: Raw update opkg cache
   raw: echo 'Triggering RAW opkg update'
-  check_mode: no
   when: >
     not python_light_installed.stdout is search("Status: install (ok|user) installed")
     or not python_logging_installed.stdout is search("Status: install (ok|user) installed")
@@ -56,31 +55,26 @@
   check_mode: no
 
 - name: Install python interpreter
-  check_mode: no
   raw: opkg install python-light
   when: >
     not python_light_installed.stdout is search("Status: install (ok|user) installed")
 
 - name: Install python-logging
-  check_mode: no
   raw: opkg install python-logging
   when: >
     not python_logging_installed.stdout is search("Status: install (ok|user) installed")
 
 - name: Install python-openssl
-  check_mode: no
   raw: opkg install python-openssl
   when: >
     not python_openssl_installed.stdout is search("Status: install (ok|user) installed")
 
 - name: Install python-codecs
-  check_mode: no
   raw: opkg install python-codecs
   when: >
     not python_codecs_installed.stdout is search("Status: install (ok|user) installed")
 
 - name: Install openssh-sftp-server
-  check_mode: no
   raw: opkg install openssh-sftp-server
   when: >
     not openssh_server_installed.stdout is search("Status: install (ok|user) installed")
