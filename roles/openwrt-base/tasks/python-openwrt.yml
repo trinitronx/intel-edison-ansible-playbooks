@@ -12,26 +12,31 @@
 
 - name: Check for python interpreter
   check_mode: no
+  changed_when: False
   raw: opkg status python-light
   register: python_light_installed
 
 - name: Check for python-logging
   check_mode: no
+  changed_when: False
   raw: opkg status python-logging
   register: python_logging_installed
 
 - name: Check for python-openssl
   check_mode: no
+  changed_when: False
   raw: opkg status python-openssl
   register: python_openssl_installed
 
 - name: Check for python-codecs
   check_mode: no
+  changed_when: False
   raw: opkg status python-codecs
   register: python_codecs_installed
 
 - name: Check for openssh-sftp-server
   check_mode: no
+  changed_when: False
   raw: opkg status openssh-sftp-server
   register: openssh_server_installed
 
