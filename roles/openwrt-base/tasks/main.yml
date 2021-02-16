@@ -1,0 +1,8 @@
+---
+# openwrt-base: entry point for tasks
+#               Generally only include other file(s) and add tags here.
+
+- include: python-openwrt.yml
+  tags: python-openwrt
+- include: opkg-openwrt.yml
+  tags: opkg-openwrt

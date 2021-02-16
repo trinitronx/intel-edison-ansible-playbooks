@@ -1,0 +1,40 @@
+---
+# openwrt-base: entry point for handlers
+# This should fix any weird opkg cache bugs
+# Use this if you're seeing 0 packages for a repo,
+- name: destroy opkg cache
+  file: >
+    path=/var/lib/opkg
+    force=yes
+    state=absent
+
+- name: create opkg cache dir
+  file: >
+    path=/var/lib/opkg
+    force=yes
+    state=directory
+
+- name: opkg update
+  shell: opkg update
+  check_mode: no
+  register: opkg_makecache_result
+  until: opkg_makecache_result is defined and opkg_makecache_result.rc == 0
+  retries: 3
+  delay: 1
+
+# RAW command handlers for bootstrap steps
+- name: RAW destroy opkg cache
+  raw: >
+    rm -rf /var/lib/opkg
+
+- name: RAW create opkg cache dir
+  raw: >
+    mkdir -p /var/lib/opkg
+
+- name: RAW opkg update
+  raw: opkg update
+  check_mode: no
+  register: opkg_makecache_result
+  until: opkg_makecache_result is defined and opkg_makecache_result.rc == 0
+  retries: 3
+  delay: 1
