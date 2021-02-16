@@ -1,0 +1,16 @@
+# openwrt-base: entry point for defaults
+# default.yml - default vars for unsupported / unknown OS
+# (Assumes this is OpenWRT LEDE Image)
+---
+openwrt_opkg_repo_files:
+  - distfeeds.conf
+  - customfeeds.conf
+
+openwrt_opkg_packages:
+  - ca-certificates
+  - ca-bundle
+  - zlib
+  - libopenssl
+  - curl
+  - uclient-fetch
+

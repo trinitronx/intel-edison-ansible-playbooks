@@ -1,0 +1,86 @@
+---
+# opkg-edison: Tasks entry point. Called by main.yml
+
+# Load a variable file based on the OS type, or a default if not found.
+- include_vars: "{{ item }}"
+  with_first_found:
+    - "../vars/{{ ansible_distribution }}-{{ ansible_distribution_major_version | int}}.yml"
+    - "../vars/{{ ansible_distribution }}.yml"
+    - "../vars/{{ ansible_os_family }}.yml"
+    - "../vars/default.yml"
+  when: openwrt_opkg_repo_files is not defined
+
+- name: Check for python interpreter
+  check_mode: no
+  changed_when: False
+  raw: opkg status python-light
+  register: python_light_installed
+
+- name: Check for python-logging
+  check_mode: no
+  changed_when: False
+  raw: opkg status python-logging
+  register: python_logging_installed
+
+- name: Check for python-openssl
+  check_mode: no
+  changed_when: False
+  raw: opkg status python-openssl
+  register: python_openssl_installed
+
+- name: Check for python-codecs
+  check_mode: no
+  changed_when: False
+  raw: opkg status python-codecs
+  register: python_codecs_installed
+
+- name: Check for openssh-sftp-server
+  check_mode: no
+  changed_when: False
+  raw: opkg status openssh-sftp-server
+  register: openssh_server_installed
+
+# Bootstrap python interpreter for Ansible
+- name: Raw update opkg cache
+  raw: echo 'Triggering RAW opkg update'
+  when: >
+    not python_light_installed.stdout is search("Status: install (ok|user) installed")
+    or not python_logging_installed.stdout is search("Status: install (ok|user) installed")
+    or not python_openssl_installed.stdout is search("Status: install (ok|user) installed")
+    or not python_codecs_installed.stdout is search("Status: install (ok|user) installed")
+    or not openssh_server_installed.stdout is search("Status: install (ok|user) installed")
+  notify:
+    - RAW destroy opkg cache
+    - RAW create opkg cache dir
+    - RAW opkg update
+
+# Run yum makecache handlers immediately
+# (Should fix Ansible runs on hosts with pre-existing opkg repo problems)
+- meta: flush_handlers
+  check_mode: no
+
+- name: Install python interpreter
+  raw: opkg install python-light
+  when: >
+    not python_light_installed.stdout is search("Status: install (ok|user) installed")
+
+- name: Install python-logging
+  raw: opkg install python-logging
+  when: >
+    not python_logging_installed.stdout is search("Status: install (ok|user) installed")
+
+- name: Install python-openssl
+  raw: opkg install python-openssl
+  when: >
+    not python_openssl_installed.stdout is search("Status: install (ok|user) installed")
+
+- name: Install python-codecs
+  raw: opkg install python-codecs
+  when: >
+    not python_codecs_installed.stdout is search("Status: install (ok|user) installed")
+
+- name: Install openssh-sftp-server
+  raw: opkg install openssh-sftp-server
+  when: >
+    not openssh_server_installed.stdout is search("Status: install (ok|user) installed")
+

@@ -1,0 +1,48 @@
+---
+# This playbook bootstraps an OpenWRT LEDE router with base settings
+
+- hosts: openwrt
+  user: root
+  gather_facts: no
+
+  roles:
+    - openwrt-base
+#    - openwrt-logrotate
+  tasks:
+    - name: Install Extra packages
+      opkg: >
+        name={{ item }}
+        state=installed
+      with_items:
+        - ethtool
+#        - ip-full
+#        - ca-certificates
+#        - ca-bundle
+#        - curl
+#        - bind-host
+#        - bind-dig
+#        - bind-libs
+#        - ddns-scripts
+#        - luci-app-ddns
+#        - iptables
+#        - ip6tables
+#        - iptables-mod-conntrack-extra
+#        - logrotate
+#        - luci-app-firewall
+#        - luci-proto-ipv6
+#        - openvpn-openssl
+#        - libopenssl
+#        - libustream-openssl
+#        - libmbedtls
+#        - kmod-tun
+#        - luci-app-openvpn
+#        - luci-proto-ppp
+#        - ppp-mod-pppoe
+#        - ppp
+#        - mdns-utils
+#        - mdnsd
+#        - mdnsresponder
+      tags:
+        - opkg_packages
+        - packages
+        - install_packages
