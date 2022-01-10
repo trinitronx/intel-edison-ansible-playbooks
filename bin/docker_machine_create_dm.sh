@@ -19,5 +19,5 @@ BOOT2DOCKER_URL='https://github.com/silver886/boot2docker/releases/download/v20.
 
 docker-machine create --driver virtualbox \
   --virtualbox-boot2docker-url "$BOOT2DOCKER_URL" \
-  --virtualbox-hostonly-cidr "192.168.56.100/24" \
+  --virtualbox-hostonly-cidr "192.168.56.100/21" \
   dm
