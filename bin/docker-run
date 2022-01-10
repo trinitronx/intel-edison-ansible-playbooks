@@ -208,6 +208,15 @@ if [[ "$CMD" == *"/init" ]]; then
 else
   DOCKER_INTERACT_ARGS='-ti --rm=true'
 
+  # Always use sudo when running pip commands inside container
+  # If pip is run without sudo it hangs in deadlock condition
+  if [ -n "$DOCKER_MACHINE_NAME" ]; then
+    EXPORT_DOCKER_PIP_USE_SUDO='export PIP_USE_SUDO=1; '
+  else
+    # unset this for security purposes if running on native host
+    unset EXPORT_DOCKER_PIP_USE_SUDO
+  fi
+
   # Create script to run inside docker container
 cat << EOF > ${RUN_SCRIPT}
 #!/usr/bin/env bash
@@ -292,7 +301,8 @@ if [[ "\$SSH_AUTH_SOCK" == \$SSH_AUTH_SOCK_MAGIC_PATH ]]; then
 fi
 
 su - ${MY_USERNAME} -c \
-'$EXPORT_DOCKER_SSH_AGENT_AUTH_SOCK cd ${REPO_BASE} && \
+'$EXPORT_DOCKER_SSH_AGENT_AUTH_SOCK $EXPORT_DOCKER_PIP_USE_SUDO \
+cd ${REPO_BASE} && \
 source bin/setup-ansible-env.sh && [ -e /opt/ansible/ansible/hacking/env-setup ] && source /opt/ansible/ansible/hacking/env-setup ; \
 ${CMD}'
 EOF
