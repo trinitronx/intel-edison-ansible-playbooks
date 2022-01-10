@@ -157,16 +157,6 @@ if env | grep -q SSH_AUTH_SOCK && test -n "${DOCKER_MACHINE_NAME}"; then
   [ $? -eq 0 ] || echo "ERROR: DM_AGENT_SOCK path: $DM_AGENT_SOCK does not exist... could not forward SSH_AUTH_SOCK into docker-machine!  Is your ssh-agent running?"
 fi
 
-# TODO: Figure out some way of supporting "Docker for Mac" to pass through ssh-agent socket?
-#       As the latest version of OSX native Docker does not support socket communication over the Hypervisor boundary, we're stuck!
-#       The official documentation states:
-#         "Socket files and named pipes only transmit between containers and between OS X processes – no transmission across the hypervisor is supported, yet."
-# References:
-#   - https://docs.docker.com/docker-for-mac/osxfs/#file-types
-#   - https://github.com/docker/for-mac/issues/410
-#   - https://github.com/docker/for-mac/issues/483
-#   - https://docs.docker.com/docker-for-mac/troubleshoot/#/known-issues
-# TODO: Watch these bug tickets to see if they add it ^^
 
 # If Docker Host is running ssh-agent, import SSH_AUTH_SOCK into container env
 if env | grep -q SSH_AUTH_SOCK ; then
