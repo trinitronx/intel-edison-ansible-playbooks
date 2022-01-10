@@ -9,7 +9,7 @@ if [[ "${DOCKER_RUN_LOG}" == "DEBUG" ]]; then
   set -x
 fi
 
-CONTAINER_ID="${CONTAINER_ID-trinitronx/ansible-base:devel-centos7-2.3.0}"
+CONTAINER_ID="${CONTAINER_ID-trinitronx/ansible-base:devel-centos7-2.5.0}"
 
 REPO_BASE=$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )
 if [ $# -ge   1 ]; then
@@ -170,18 +170,26 @@ fi
 
 # If Docker Host is running ssh-agent, import SSH_AUTH_SOCK into container env
 if env | grep -q SSH_AUTH_SOCK ; then
-  SOCK_PATH="$SSH_AUTH_SOCK" # Default to passing through SSH_AUTH_SOCK (if on angus00.*)
-  if [[ -h $SOCK_PATH ]]; then
-    SOCK_PATH=$(readlink -f $SOCK_PATH)
-  fi
-  # If docker-machine was detected, pass that socket through instead
-  env | grep -q DM_AGENT_SOCK && SOCK_PATH="$DM_AGENT_SOCK"
-  if [[ -z "$SOCK_PATH" || ( "${SOCK_PATH}" != "${DM_AGENT_SOCK}" && ! -e "$SOCK_PATH" ) ]]; then
-     echo "ERROR: SSH_AGENT_SOCK path: $SOCK_PATH does not exist... is your ssh-agent running?"
-  else
-    DOCKER_RUN_SSH_AGENT_ARGS="-v $(dirname $SOCK_PATH):/ssh-agent -e SSH_AUTH_SOCK=/ssh-agent/$(basename $SOCK_PATH)"
+  if uname -s | grep -qi 'darwin' && [ -z "$DOCKER_MACHINE_NAME" ] ; then
+    # Use "magic" ssh-auth.sock path provided as of Docker for Mac >= 2.2.0.0
+    SSH_AUTH_SOCK_MAGIC_PATH='/run/host-services/ssh-auth.sock'
     ANSIBLE_SSH_ARGS=" -o ForwardAgent=yes -o ControlPath=/tmp/ssh-%r@%h:%p -o ControlMaster=auto -o ControlPersist=60s ${ANSIBLE_SSH_ARGS:-}"
-    EXPORT_DOCKER_SSH_AGENT_AUTH_SOCK="export SSH_AUTH_SOCK=/ssh-agent/$(basename $SOCK_PATH) ; export ANSIBLE_SSH_ARGS=\"$ANSIBLE_SSH_ARGS\" ; "
+    DOCKER_RUN_SSH_AGENT_ARGS="-v ${SSH_AUTH_SOCK_MAGIC_PATH}:${SSH_AUTH_SOCK_MAGIC_PATH} -e SSH_AUTH_SOCK=${SSH_AUTH_SOCK_MAGIC_PATH}"
+    EXPORT_DOCKER_SSH_AGENT_AUTH_SOCK="export SSH_AUTH_SOCK=$SSH_AUTH_SOCK_MAGIC_PATH ; export ANSIBLE_SSH_ARGS=\"$ANSIBLE_SSH_ARGS\" ; "
+  else
+    SOCK_PATH="$SSH_AUTH_SOCK" # Default to passing through SSH_AUTH_SOCK (if on angus00.*)
+    if [[ -h $SOCK_PATH ]]; then
+      SOCK_PATH=$(readlink -f $SOCK_PATH)
+    fi
+    # If docker-machine was detected, pass that socket through instead
+    env | grep -q DM_AGENT_SOCK && SOCK_PATH="$DM_AGENT_SOCK"
+    if [[ -z "$SOCK_PATH" || ( "${SOCK_PATH}" != "${DM_AGENT_SOCK}" && ! -e "$SOCK_PATH" ) ]]; then
+       echo "ERROR: SSH_AGENT_SOCK path: $SOCK_PATH does not exist... is your ssh-agent running?"
+    else
+      DOCKER_RUN_SSH_AGENT_ARGS="-v $(dirname $SOCK_PATH):/ssh-agent -e SSH_AUTH_SOCK=/ssh-agent/$(basename $SOCK_PATH)"
+      ANSIBLE_SSH_ARGS=" -o ForwardAgent=yes -o ControlPath=/tmp/ssh-%r@%h:%p -o ControlMaster=auto -o ControlPersist=60s ${ANSIBLE_SSH_ARGS:-}"
+      EXPORT_DOCKER_SSH_AGENT_AUTH_SOCK="export SSH_AUTH_SOCK=/ssh-agent/$(basename $SOCK_PATH) ; export ANSIBLE_SSH_ARGS=\"$ANSIBLE_SSH_ARGS\" ; "
+    fi
   fi
 fi
 
@@ -205,7 +213,7 @@ cat << EOF > ${RUN_SCRIPT}
 #!/usr/bin/env bash
 # Debug logging for ${RUN_SCRIPT}
 # To use: export DOCKER_RUN_ARGS='-e DOCKER_RUN_LOG=DEBUG'
-DOCKER_RUN_LOG="\$(echo $DOCKER_RUN_LOG | tr '[a-z]' '[A-Z]')"
+DOCKER_RUN_LOG="\$(echo \$DOCKER_RUN_LOG | tr '[a-z]' '[A-Z]')"
 if [[ "\${DOCKER_RUN_LOG}" == "DEBUG" ]]; then
   PS4='+(\${BASH_SOURCE}:\${LINENO}): \${FUNCNAME[0]:+\${FUNCNAME[0]}(): }' ## Debugging prompt (for bash -x || set -x)
   set -x
@@ -218,6 +226,7 @@ MY_GID=$MY_GID
 USERS_GID=\$(getent group users |cut -d: -f3)
 WHEEL_GID=\$(getent group wheel |cut -d: -f3)
 DOCKER_MACHINE_NAME=$DOCKER_MACHINE_NAME
+SSH_AUTH_SOCK_MAGIC_PATH='/run/host-services/ssh-auth.sock'
 
 # Ugly hack to support boot2docker or VirtualBox shared volumes mounted with different UID & GID inside docker host & container
 # Reference: https://github.com/boot2docker/boot2docker/issues/581
@@ -235,15 +244,19 @@ MY_DIR_UID="\$(stat \${stat_format_arg}%u ${HOME})"
 
 if [ $MY_GID -ne \$MY_DIR_GID -o $MY_UID -ne \$MY_DIR_UID -a -n \$MY_DIR_GID -a -n \$MY_DIR_UID ]; then
   echo "WARN: $HOME is not owned by same UID/GID as on $MY_HOSTNAME"
-  echo "WARN: This may be due to boot2docker or docker-machine auto-mounting /Users with different UID & GID..."
-  echo "INFO: If you are having permission issues when writing to /Users, try remounting the share as the UID/GID of your OSX user"
-  echo "INFO: For example:"
-  echo "        docker-machine ssh $DOCKER_MACHINE_NAME 'sudo mount -t vboxsf -o uid=$MY_UID,gid=$MY_GID Users /Users'"
+  if [ -n "\$DOCKER_MACHINE_NAME" ]; then
+    echo "WARN: This may be due to boot2docker or docker-machine auto-mounting /Users with different UID & GID..."
+    echo "INFO: If you are having permission issues when writing to /Users, try remounting the share as the UID/GID of your OSX user"
+    echo "INFO: For example:"
+    echo "        docker-machine ssh $DOCKER_MACHINE_NAME 'sudo mount -t vboxsf -o uid=$MY_UID,gid=$MY_GID Users /Users'"
+  fi
   if [[ "$HOME" == *"/Users/"* ]]; then
     echo "WARN: Found '/Users/' in \\\$HOME ($HOME)... Assuming boot2docker or docker-machine did this."
     echo "WARN: Re-setting UID & GID inside container to match volume: $HOME"
-    MY_UID=\$MY_DIR_UID
-    MY_GID=\$MY_DIR_GID
+    if [[ "\$SSH_AUTH_SOCK" != \$SSH_AUTH_SOCK_MAGIC_PATH ]]; then
+      MY_UID=\$MY_DIR_UID
+      MY_GID=\$MY_DIR_GID
+    fi
     # Force GID from OSX host... gid 20 (staff) on OSX already used inside container (games)
     echo "WARN: Allowing duplicate gid to be created via 'groupadd -o'"
     groupadd_args='-o'
@@ -252,12 +265,19 @@ fi
 
 if env | grep -q SSH_AUTH_SOCK ; then
   # Fix SSH_AUTH_SOCK permissions inside container
-  SSH_AUTH_SOCK_GID="\$(stat \${stat_format_arg}%g \${SSH_AUTH_SOCK})"
-  SSH_AUTH_SOCK_UID="\$(stat \${stat_format_arg}%u \${SSH_AUTH_SOCK})"
-  if [ -n \$SSH_AUTH_SOCK -a $MY_GID -ne \$SSH_AUTH_SOCK_GID -o $MY_UID -ne \$SSH_AUTH_SOCK_UID -a -n \$SSH_AUTH_SOCK_GID -a -n \$SSH_AUTH_SOCK_UID ]; then
-    setfacl -m ${MY_UID}:rx  \$(dirname "\$SSH_AUTH_SOCK") ;
-    setfacl -m ${MY_UID}:rwx "\$SSH_AUTH_SOCK" ;
-    setfacl -m ${MY_GID}:rwx "\$SSH_AUTH_SOCK" ;
+  if [[ "\$SSH_AUTH_SOCK" == \$SSH_AUTH_SOCK_MAGIC_PATH ]]; then
+    SSH_AUTH_SOCK_GID="\$MY_GID"
+    SSH_AUTH_SOCK_UID="\$MY_UID"
+  else
+    SSH_AUTH_SOCK_GID="\$(stat \${stat_format_arg}%g \${SSH_AUTH_SOCK})"
+    SSH_AUTH_SOCK_UID="\$(stat \${stat_format_arg}%u \${SSH_AUTH_SOCK})"
+  fi
+  if [[ "\$SSH_AUTH_SOCK" != \$SSH_AUTH_SOCK_MAGIC_PATH ]]; then
+    if [ -n \$SSH_AUTH_SOCK -a $MY_GID -ne \$SSH_AUTH_SOCK_GID -o $MY_UID -ne \$SSH_AUTH_SOCK_UID -a -n \$SSH_AUTH_SOCK_GID -a -n \$SSH_AUTH_SOCK_UID ]; then
+      setfacl -m ${MY_UID}:rx  \$(dirname "\$SSH_AUTH_SOCK") ;
+      setfacl -m ${MY_UID}:rwx "\$SSH_AUTH_SOCK" ;
+      setfacl -m ${MY_GID}:rwx "\$SSH_AUTH_SOCK" ;
+    fi
   fi
 fi
 
@@ -266,6 +286,10 @@ if (! egrep -q "^${MY_GROUPNAME}:x:\${MY_GID}:" /etc/group); then
     groupadd \${groupadd_args} -g \${MY_GID} "${MY_GROUPNAME}"
 fi
 useradd -u \${MY_UID} -g \${MY_GID} -G \${USERS_GID}\${WHEEL_GID:+,\${WHEEL_GID}} -d ${HOME} -M ${MY_USERNAME}
+
+if [[ "\$SSH_AUTH_SOCK" == \$SSH_AUTH_SOCK_MAGIC_PATH ]]; then
+  chown \$SSH_AUTH_SOCK_UID:\$SSH_AUTH_SOCK_GID \$SSH_AUTH_SOCK_MAGIC_PATH
+fi
 
 su - ${MY_USERNAME} -c \
 '$EXPORT_DOCKER_SSH_AGENT_AUTH_SOCK cd ${REPO_BASE} && \
