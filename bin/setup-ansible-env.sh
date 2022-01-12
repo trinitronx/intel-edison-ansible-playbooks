@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 REPO_BASE=$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )
 
+# To use: export PIP_USE_SUDO=1
+[[ -n "$PIP_USE_SUDO" && "$PIP_USE_SUDO" == '1' ]] && USE_SUDO='sudo' || USE_SUDO=''
 
 # Configure AWS credentials
 #. ~/secrets/aws_keys.sh
@@ -12,4 +14,4 @@ REPO_BASE=$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )
 export ANSIBLE_HOSTS=${REPO_BASE}/inventory
 
 # Setup Ansible Dynamic Inventory script dependencies
-pip list --format=columns | grep -q ipaddress || pip install -r ${REPO_BASE}/inventory/requirements.txt
+$USE_SUDO pip list --format=columns | grep -q ipaddress || $USE_SUDO pip install -r ${REPO_BASE}/inventory/requirements.txt
