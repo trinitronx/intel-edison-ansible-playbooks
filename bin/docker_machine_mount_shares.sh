@@ -47,8 +47,8 @@ docker-machine ssh "$DOCKER_MACHINE_NAME" "sudo mount -t vboxsf -o uid=$(id -u),
 #docker-machine ssh $DOCKER_MACHINE_NAME "[ -d /tmp/.X11-unix ] || sudo mkdir -p /tmp/.X11-unix"
 #docker-machine ssh $DOCKER_MACHINE_NAME "sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g),rw,acl x11-fwd /tmp/.X11-unix"
 
-if [ -n "$DISPLAY" -a -x "$(which docker-machine-nfs)" ]; then
+if [ -n "$DISPLAY" ] && [ -x "$(which docker-machine-nfs)" ]; then
 #  docker-machine-nfs $DOCKER_MACHINE_NAME --shared-folder=/Users --mount-opts="rw,acl,async,nolock,vers=3,udp,noatime,actimeo=1"
-  docker-machine ssh "$DOCKER_MACHINE_NAME" "[ -d $(realpath $(dirname "$DISPLAY")) ] || sudo mkdir -p $(realpath $(dirname "$DISPLAY"))"
-  docker-machine-nfs "$DOCKER_MACHINE_NAME" --shared-folder=/Users --shared-folder=$(realpath $(dirname "$DISPLAY")) --mount-opts="rw,acl,async,nolock,vers=3,udp,noatime,actimeo=1"
+  docker-machine ssh "$DOCKER_MACHINE_NAME" "[ -d \"$(realpath "$(dirname "$DISPLAY")")\" ] || sudo mkdir -p \"$(realpath "$(dirname "$DISPLAY")")\""
+  docker-machine-nfs "$DOCKER_MACHINE_NAME" --shared-folder=/Users --shared-folder="$(realpath "$(dirname "$DISPLAY")")" --mount-opts="rw,acl,async,nolock,vers=3,udp,noatime,actimeo=1"
 fi
