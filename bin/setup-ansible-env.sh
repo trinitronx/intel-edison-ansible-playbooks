@@ -14,4 +14,4 @@ REPO_BASE=$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )
 export ANSIBLE_HOSTS=${REPO_BASE}/inventory
 
 # Setup Ansible Dynamic Inventory script dependencies
-$USE_SUDO pip list --format=columns | grep -q ipaddress || $USE_SUDO pip install -r ${REPO_BASE}/inventory/requirements.txt
+$USE_SUDO pip list --format=columns | grep -q ipaddress || $USE_SUDO pip install -r "${REPO_BASE}"/inventory/requirements.txt
