@@ -1,7 +1,7 @@
 #!/bin/bash
 # create the skeleton of an Ansible role
 # ---
-SCRIPT=$(basename $0)
+SCRIPT=$(basename "$0")
 
 usage() {
 echo "${SCRIPT} <rolename>"
@@ -14,11 +14,11 @@ if [ $# -ne 1 ]; then
    exit 1
 fi
 ROLE_NAME=$1
-ROLE_NAME_LOWERCASE=$(echo ${ROLE_NAME} | tr '[:upper:]' '[:lower:]')
+ROLE_NAME_LOWERCASE=$(echo "${ROLE_NAME}" | tr '[:upper:]' '[:lower:]')
 REPO_BASE=$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )
 ROLE_BASE=${REPO_BASE}/roles/${ROLE_NAME}/
 
-if [ -e $ROLE_BASE ]; then
+if [ -e "$ROLE_BASE" ]; then
    echo "${SCRIPT}: Warning: $ROLE_BASE already exists. Exiting."
    exit 1
 fi
@@ -27,34 +27,34 @@ fi
 # If user is running as rpcm on angus00...
 [[ "rpcm" == "$USER" ]] && user_full_name="YOUR NAME HERE"
 # If user has a Mac
-[[ -z "$user_full_name" && -x "$( which dscacheutil )" ]] && user_full_name="$( dscacheutil -q user -a name $USER | awk -F: '/^gecos/ { gsub(/^ /, "", $2); print $2 }' )"
+[[ -z "$user_full_name" && -x "$( which dscacheutil )" ]] && user_full_name="$( dscacheutil -q user -a name "$USER" | awk -F: '/^gecos/ { gsub(/^ /, "", $2); print $2 }' )"
 # If user is not rpcm, but running on angus as themselves
-[[ -z "$user_full_name" && -x "$( which getent )" ]] && user_full_name="$( getent passwd $USER | cut -d ':' -f 5 | cut -d ',' -f 1 )"
+[[ -z "$user_full_name" && -x "$( which getent )" ]] && user_full_name="$( getent passwd "$USER" | cut -d ':' -f 5 | cut -d ',' -f 1 )"
 #echo "USER FULL NAME: $user_full_name"
 
-mkdir -p  ${ROLE_BASE}/{tasks,handlers,templates,files,vars,defaults,meta}
+mkdir -p  "${ROLE_BASE}"/{tasks,handlers,templates,files,vars,defaults,meta}
 for i in handlers vars defaults
 do
    main=${ROLE_BASE}/${i}/main.yml
-   echo '---' > ${main}
-   echo "# ${ROLE_NAME}: entry point for ${i}" >> ${main}
+   echo '---' > "${main}"
+   echo "# ${ROLE_NAME}: entry point for ${i}" >> "${main}"
 done
 
 # Set up the tasks/ dir separately so
 # that main.yml is only for tagged includes
 # and all real tasks are in alternative file(s)
 task_base=${ROLE_BASE}/tasks/
-echo '---' > ${task_base}/${ROLE_NAME}.yml
-echo "# ${ROLE_NAME}: Tasks entry point. Called by main.yml " >> ${task_base}/${ROLE_NAME}.yml
+echo '---' > "${task_base}"/"${ROLE_NAME}".yml
+echo "# ${ROLE_NAME}: Tasks entry point. Called by main.yml " >> "${task_base}"/"${ROLE_NAME}".yml
 
-echo '---' > ${task_base}/main.yml
-echo "# ${ROLE_NAME}: entry point for tasks" >> ${task_base}/main.yml
-echo "#                 Generally only include other file(s) and add tags here." >> ${task_base}/main.yml
-echo -e "\n- include: ${ROLE_NAME}.yml\n  tags: ${ROLE_NAME}" >> ${task_base}/main.yml
+echo '---' > "${task_base}"/main.yml
+echo "# ${ROLE_NAME}: entry point for tasks" >> "${task_base}"/main.yml
+echo "#                 Generally only include other file(s) and add tags here." >> "${task_base}"/main.yml
+echo -e "\n- include: ${ROLE_NAME}.yml\n  tags: ${ROLE_NAME}" >> "${task_base}"/main.yml
 
 # create a basic README.md
-escaped_role_name=$(echo ${ROLE_NAME} | sed -e 's/_/\\_/g')
-cat << EOF > ${ROLE_BASE}/README.md
+escaped_role_name=$(echo "${ROLE_NAME}" | sed -e 's/_/\\_/g')
+cat << EOF > "${ROLE_BASE}"/README.md
 Role: ${escaped_role_name}
 ====
 **Description:**
@@ -127,7 +127,7 @@ EOF
 
 ## Create full metadata template for role
 metadata=${ROLE_BASE}/meta/main.yml
-cat << EOF > ${metadata}
+cat << EOF > "${metadata}"
 ---
 # ${ROLE_NAME}: entry point for meta
 galaxy_info:
