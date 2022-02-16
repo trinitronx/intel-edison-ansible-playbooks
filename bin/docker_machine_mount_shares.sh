@@ -8,9 +8,9 @@ docker_machine_state() {
 
 
 DOCKER_MACHINE_NAME=$(docker-machine active 2>/dev/null)
-[ -z $DOCKER_MACHINE_NAME ] && DOCKER_MACHINE_NAME=$(docker-machine ls --filter 'driver=virtualbox' --format '{{.Name}}' | head -n1)
+[ -z "$DOCKER_MACHINE_NAME" ] && DOCKER_MACHINE_NAME=$(docker-machine ls --filter 'driver=virtualbox' --format '{{.Name}}' | head -n1)
 
-SHARED_FOLDERS="$(VBoxManage showvminfo $DOCKER_MACHINE_NAME  --machinereadable | grep SharedFolder | tr '\r\n' ' ')"
+SHARED_FOLDERS="$(VBoxManage showvminfo "$DOCKER_MACHINE_NAME"  --machinereadable | grep SharedFolder | tr '\r\n' ' ')"
 
 #if ! [[ $SHARED_FOLDERS =~ .*Users.* ]]; then
 #  if docker_machine_state $DOCKER_MACHINE_NAME | grep -qi 'Running' ; then
@@ -21,11 +21,11 @@ SHARED_FOLDERS="$(VBoxManage showvminfo $DOCKER_MACHINE_NAME  --machinereadable 
 #fi
 
 if ! [[ $SHARED_FOLDERS =~ .*rpcm.* ]]; then
-  if docker_machine_state $DOCKER_MACHINE_NAME | grep -qi 'Running' ; then
-    docker-machine stop $DOCKER_MACHINE_NAME
+  if docker_machine_state "$DOCKER_MACHINE_NAME" | grep -qi 'Running' ; then
+    docker-machine stop "$DOCKER_MACHINE_NAME"
   fi
-  VBoxManage sharedfolder add $DOCKER_MACHINE_NAME --name rpcm --hostpath /usr/local/rpcm
-  VBoxManage setextradata $DOCKER_MACHINE_NAME VBoxInternal2/SharedFoldersEnableSymlinksCreate/rpcm 1
+  VBoxManage sharedfolder add "$DOCKER_MACHINE_NAME" --name rpcm --hostpath /usr/local/rpcm
+  VBoxManage setextradata "$DOCKER_MACHINE_NAME" VBoxInternal2/SharedFoldersEnableSymlinksCreate/rpcm 1
 fi
 
 #if ! [[ $SHARED_FOLDERS =~ .*x11-fwd.* ]]; then
@@ -36,10 +36,10 @@ fi
 #  VBoxManage setextradata $DOCKER_MACHINE_NAME VBoxInternal2/SharedFoldersEnableSymlinksCreate/x11-fwd 1
 #fi
 
-[[ "$(docker-machine status $DOCKER_MACHINE_NAME)" != 'Running' ]] && docker-machine start $DOCKER_MACHINE_NAME
+[[ "$(docker-machine status "$DOCKER_MACHINE_NAME")" != 'Running' ]] && docker-machine start "$DOCKER_MACHINE_NAME"
 
-docker-machine ssh $DOCKER_MACHINE_NAME "[ -d /usr/local/rpcm ] || sudo mkdir -p /usr/local/rpcm"
-docker-machine ssh $DOCKER_MACHINE_NAME "sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g) rpcm /usr/local/rpcm"
+docker-machine ssh "$DOCKER_MACHINE_NAME" "[ -d /usr/local/rpcm ] || sudo mkdir -p /usr/local/rpcm"
+docker-machine ssh "$DOCKER_MACHINE_NAME" "sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g) rpcm /usr/local/rpcm"
 #docker-machine ssh $DOCKER_MACHINE_NAME "[ -d /Users ] || sudo mkdir -p /Users"
 #docker-machine ssh $DOCKER_MACHINE_NAME "sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g) Users /Users"
 
@@ -49,6 +49,6 @@ docker-machine ssh $DOCKER_MACHINE_NAME "sudo mount -t vboxsf -o uid=$(id -u),gi
 
 if [ -n "$DISPLAY" -a -x "$(which docker-machine-nfs)" ]; then
 #  docker-machine-nfs $DOCKER_MACHINE_NAME --shared-folder=/Users --mount-opts="rw,acl,async,nolock,vers=3,udp,noatime,actimeo=1"
-  docker-machine ssh $DOCKER_MACHINE_NAME "[ -d $(realpath $(dirname $DISPLAY)) ] || sudo mkdir -p $(realpath $(dirname $DISPLAY))"
-  docker-machine-nfs $DOCKER_MACHINE_NAME --shared-folder=/Users --shared-folder=$(realpath $(dirname $DISPLAY)) --mount-opts="rw,acl,async,nolock,vers=3,udp,noatime,actimeo=1"
+  docker-machine ssh "$DOCKER_MACHINE_NAME" "[ -d $(realpath $(dirname "$DISPLAY")) ] || sudo mkdir -p $(realpath $(dirname "$DISPLAY"))"
+  docker-machine-nfs "$DOCKER_MACHINE_NAME" --shared-folder=/Users --shared-folder=$(realpath $(dirname "$DISPLAY")) --mount-opts="rw,acl,async,nolock,vers=3,udp,noatime,actimeo=1"
 fi
