@@ -24,7 +24,7 @@ errorout() {
 # Create docker-machine 'dm' with:
 #  - Docker v20.10.11
 # Source: https://github.com/silver886/boot2docker/releases/tag/v20.10.11
-BOOT2DOCKER_URL='https://github.com/silver886/boot2docker/releases/download/v20.10.11/boot2docker.iso'
+BOOT2DOCKER_URL='https://github.com/silver886/boot2docker/releases/download/v20.10.12-rc1/boot2docker.iso'
 
 docker-machine create --driver virtualbox \
   --virtualbox-boot2docker-url "$BOOT2DOCKER_URL" \
@@ -50,8 +50,3 @@ docker-machine ssh $DOCKER_MACHINE_NAME "sudo VBoxService --only-automount"
 docker-machine ssh $DOCKER_MACHINE_NAME "sudo umount /sf_Users"
 docker-machine ssh $DOCKER_MACHINE_NAME "sudo mkdir /Users; sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g) Users /Users"
 docker-machine ssh $DOCKER_MACHINE_NAME "sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g) Users /Users"
-
-# Fix broken tce-load mirror command
-# NOTE: Check mirror URL works when gathered from:
-#       . /etc/init.d/tc-functions ; set -x; getMirror ; set +x
-docker-machine ssh $DOCKER_MACHINE_NAME "sudo /bin/sed -i'' -e 's/VERSION_ID=.*/VERSION_ID=12.0/'  /etc/os-release"
