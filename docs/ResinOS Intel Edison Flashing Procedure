@@ -20,4 +20,4 @@ ResinOS Intel Edison Flashing Procedure
         systemctl mask ModemManager
         systemctl reboot
 
-8. 
+8.

@@ -65,7 +65,7 @@ platforms:
     image: centos:7
     platform: centos
     privileged: true
-    provision_command: 
+    provision_command:
       - /usr/bin/systemctl enable sshd
     run_command: /usr/sbin/init
     privileged: true
@@ -75,7 +75,7 @@ platforms:
 #     image: yocto:ww18-15
 #     platform: yocto
 #     privileged: true
-#     provision_command: 
+#     provision_command:
 #       - /usr/bin/systemctl enable sshd
 #     run_command: /usr/sbin/init
 #     privileged: true

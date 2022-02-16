@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT=$(basename $0)
+SCRIPT=$(basename "$0")
 REPO_BASE=$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )
 
 # If using docker-machine + VirtualBox...
@@ -9,8 +9,8 @@ REPO_BASE=$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )
 DOCKER_MACHINE_NAME=$(docker-machine active 2>/dev/null)
 
 if [ -n "${DOCKER_MACHINE_NAME}" ]; then
-  VBoxManage modifyvm $DOCKER_MACHINE_NAME --natdnshostresolver1 on
+  VBoxManage modifyvm "$DOCKER_MACHINE_NAME" --natdnshostresolver1 on
 fi
 
 # Assuming you set up SSH keys, SSH in as root via key auth
-ansible-playbook -i ${REPO_BASE}/inventory/hosts ${REPO_BASE}/base.yml -vv --diff --user=root
+ansible-playbook -i "${REPO_BASE}"/inventory/hosts "${REPO_BASE}"/base.yml -vv --diff --user=root

@@ -1,23 +1,51 @@
+<!-- markdownlint-disable code-block-style -->
+<!-- markdownlint-configure-file
+{
+  "line-length": {
+    "line_length": 120,
+    "heading_line_length":100,
+    "code_block_line_length":300,
+    "headings":100,
+    "code_blocks": true,
+    "stern": false,
+    "strict": false
+  },
+  "hr-style": {
+    "style": "consistent"
+  },
+  "header-style": {
+    "style": "setext_with_atx"
+  },
+  "no-inline-html": {
+    "allowed_elements": ["br"]
+  }
+}
+-->
+
 ResinOS SD Card info
 ====================
 
-In order to use [kubespray](https://github.com/kubernetes-incubator/kubespray), we need to trick it into thinking it is deploying onto CoreOS.  Additionally, we need to make `/opt` writeable for Ansible's python bootstrap steps.
+In order to use [kubespray](https://github.com/kubernetes-incubator/kubespray),
+we need to trick it into thinking it is deploying onto CoreOS.
+Additionally, we need to make `/opt` writeable for Ansible's python bootstrap
+steps.
 
-dry-field 6dd9478 192.168.1.140
+    dry-field 6dd9478 192.168.1.140
 
 
-data microSD card:
-## root@6dd9478:~# dmesg -T | grep mmc1
-## [Mon Jun 26 01:41:06 2017] mmc1: no vqmmc regulator found
-## [Mon Jun 26 01:41:06 2017] mmc1: SDHCI controller on PCI [0000:00:01.2] using ADMA
-## [Mon Jun 26 01:50:19 2017] mmc1: SD Status: Invalid Allocation Unit size.
-## [Mon Jun 26 01:50:19 2017] mmc1: new high speed SDXC card at address 0007
-## [Mon Jun 26 01:50:19 2017] mmcblk1: mmc1:0007 SD128 119 GiB
-## Jun 26 01:50:19 6dd9478 kernel: mmc1: SD Status: Invalid Allocation Unit size.
-## Jun 26 01:50:19 6dd9478 kernel: mmc1: new high speed SDXC card at address 0007
-## Jun 26 01:50:19 6dd9478 kernel: mmcblk1: mmc1:0007 SD128 119 GiB
-## Jun 26 01:50:19 6dd9478 kernel:  mmcblk1: p1 p2
+    data microSD card:
+    ## root@6dd9478:~# dmesg -T | grep mmc1
+    ## [Mon Jun 26 01:41:06 2017] mmc1: no vqmmc regulator found
+    ## [Mon Jun 26 01:41:06 2017] mmc1: SDHCI controller on PCI [0000:00:01.2] using ADMA
+    ## [Mon Jun 26 01:50:19 2017] mmc1: SD Status: Invalid Allocation Unit size.
+    ## [Mon Jun 26 01:50:19 2017] mmc1: new high speed SDXC card at address 0007
+    ## [Mon Jun 26 01:50:19 2017] mmcblk1: mmc1:0007 SD128 119 GiB
+    ## Jun 26 01:50:19 6dd9478 kernel: mmc1: SD Status: Invalid Allocation Unit size.
+    ## Jun 26 01:50:19 6dd9478 kernel: mmc1: new high speed SDXC card at address 0007
+    ## Jun 26 01:50:19 6dd9478 kernel: mmcblk1: mmc1:0007 SD128 119 GiB
+    ## Jun 26 01:50:19 6dd9478 kernel:  mmcblk1: p1 p2
 
+```bash
 $ fdisk /dev/mmcblk1
 
 # Go through menu, make sure to delete any nested disklabel entries
@@ -600,8 +628,9 @@ Options:
  -h, --help         display this help text and exit
 
 For more details see mkfs(8).
+```
 
-
+```bash
 $ mkfs --verbose -t ext4 -L resin-data /dev/mmcblk1p1
 
 mkfs from util-linux 2.26.2
@@ -627,58 +656,59 @@ Maximum filesystem blocks=0
 32768 blocks per group, 32768 fragments per group
 8192 inodes per group
 Superblock backups stored on blocks:
-	32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
-	4096000, 7962624, 11239424, 20480000, 23887872
+        32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
+        4096000, 7962624, 11239424, 20480000, 23887872
 
 Allocating group tables: done
 Writing inode tables: done
 Creating journal (32768 blocks): done
 Writing superblocks and filesystem accounting information: done
+```
 
+Re-Mount root read / write
+--------------------------
 
-# Re-Mount root read / write
+    $ mount -o remount,rw /
 
-$ mount -o remount,rw /
+    $ mkdir /opt
 
-$ mkdir /opt
+    # Sync /mnt/data to our SD Card:
+    $ mount /dev/mmcblk1p1 /opt/
 
-# Sync /mnt/data to our SD Card:
-$ mount /dev/mmcblk1p1 /opt/
+    $ rsync -av  /mnt/data/ /opt/
+    sending incremental file list
 
-$ rsync -av  /mnt/data/ /opt/
-sending incremental file list
+    docker/....
+    docker/....
+    docker/....
+    ...
 
-docker/....
-docker/....
-docker/....
-...
+    sent 230,088 bytes  received 1,401 bytes  154,326.00 bytes/sec
+    total size is 78,835,736  speedup is 340.56
 
-sent 230,088 bytes  received 1,401 bytes  154,326.00 bytes/sec
-total size is 78,835,736  speedup is 340.56
+    $ systemctl stop resin-supervisor.service
+    $ systemctl stop openvpn-resin.service
+    $ docker ps -aq | awk '{ print $1 }' | xargs docker rm -v
 
-$ systemctl stop resin-supervisor.service
-$ systemctl stop openvpn-resin.service
-$ docker ps -aq | awk '{ print $1 }' | xargs docker rm -v
+    $ systemctl stop docker
 
-$ systemctl stop docker
+    # Re-sync the rest of the files
+    $ rsync -av --delete /mnt/data/ /opt/
+    sending incremental file list
 
-# Re-sync the rest of the files
-$ rsync -av --delete /mnt/data/ /opt/
-sending incremental file list
+    docker/....
+    docker/....
+    docker/....
+    ...
 
-docker/....
-docker/....
-docker/....
-...
+    sent 230,088 bytes  received 1,401 bytes  154,326.00 bytes/sec
+    total size is 78,835,736  speedup is 340.56
 
-sent 230,088 bytes  received 1,401 bytes  154,326.00 bytes/sec
-total size is 78,835,736  speedup is 340.56
+Rename partition label to 'resin-data'
+--------------------------------------
 
-
-# Rename partition label to 'resin-data'
-
+```bash
 $ fdisk /dev/mmcblk1
-
 Welcome to fdisk (util-linux 2.26.2).
 Changes will remain in memory only, until you decide to write them.
 Be careful before using the write command.
@@ -778,16 +808,18 @@ Calling ioctl() to re-read partition table.
 Re-reading the partition table failed.: Device or resource busy
 
 The kernel still uses the old table. The new table will be used at the next reboot or after you run partprobe(8) or kpartx(8).
+```
 
-# Label the new FS as resin-data
-$ e2label /dev/mmcblk1p1 resin-data
+Label the new FS as resin-data
+------------------------------
 
+    e2label /dev/mmcblk1p1 resin-data
 
+Now rename the old resin-data on the Intel Edison to 'resin-data-OLD'
+---------------------------------------------------------------------
 
-# Now rename the old resin-data on the Intel Edison to 'resin-data-OLD'
-
+```bash
 $ fdisk /dev/mmcblk0
-
 Welcome to fdisk (util-linux 2.26.2).
 Changes will remain in memory only, until you decide to write them.
 Be careful before using the write command.
@@ -923,8 +955,14 @@ Calling ioctl() to re-read partition table.
 Re-reading the partition table failed.: Device or resource busy
 
 The kernel still uses the old table. The new table will be used at the next reboot or after you run partprobe(8) or kpartx(8).
+```
 
-## FS Label needs to be changed (This seems to be used by udev /lib/udev/rules.d/60-persistent-storage.rules)
+FS Label needs to be changed
+----------------------------
+
+This seems to be used by udev `/lib/udev/rules.d/60-persistent-storage.rules`
+
+```bash
 root@6dd9478:~# e2label /dev/mmcblk0p11
 resin-data
 
@@ -934,16 +972,16 @@ root@6dd9478:~# e2label /dev/mmcblk0p11
 resin-data-OLD
 
 # Reboot to use new SD card as 'resin-data'
-$ systemctl reboot
 
-
+    $ systemctl reboot
 
 VERIFICATION
 ============
 
-To check whether the new disk has been mounted correctly, make sure you see `mmcblk1p1` in the output of `mount` command:
+To check whether the new disk has been mounted correctly, make sure you see
+`mmcblk1p1` in the output of `mount` command:
 
-```
+```bash
 root@34493e1:~# mount
 proc on /proc type proc (rw,relatime)
 sysfs on /sys type sysfs (rw,relatime)
@@ -989,7 +1027,7 @@ tmpfs on /var/lib type tmpfs (rw,relatime)
 
 Udev should have mounted the device by the new label:
 
-```
+```bash
 root@34493e1:~# ls -l /dev/disk/by-label/
 total 0
 lrwxrwxrwx 1 root root 15 Jan  1  2000 resin-boot -> ../../mmcblk0p7
@@ -1001,7 +1039,7 @@ lrwxrwxrwx 1 root root 16 Jan  1  2000 resin-state -> ../../mmcblk0p10
 
 The SystemD unit responsible for mounting:
 
-```
+```bash
 root@34493e1:~# systemctl status mnt-data.mount
 ● mnt-data.mount - Resin data partition mountpoint
    Loaded: loaded (/lib/systemd/system/mnt-data.mount; enabled; vendor preset: enabled)
@@ -1016,7 +1054,7 @@ Jan 01 00:00:20 edison systemd[1]: Mounted Resin data partition mountpoint.
 
 Docker's storage directory `/var/lib/docker` should have been mounted:
 
-```
+```bash
 root@34493e1:~# cat /lib/systemd/system/var-lib-docker.mount
 [Unit]
 Description=Docker data mountpoint
@@ -1033,10 +1071,9 @@ Options=bind
 WantedBy=multi-user.target
 ```
 
-
 We will create a new mount for `/opt`:
 
-```
+```bash
 root@34493e1:~# mkdir /mnt/data/opt/
 root@34493e1:~# cat /lib/systemd/system/opt.mount
 [Unit]
@@ -1056,7 +1093,7 @@ WantedBy=multi-user.target
 
 Enable `opt.mount`:
 
-```
+```bash
 root@34493e1:~# systemctl enable opt.mount
 Created symlink from /etc/systemd/system/multi-user.target.wants/opt.mount to /lib/systemd/system/opt.mount.
 root@6dd9478:~# systemctl daemon-reload
@@ -1070,7 +1107,7 @@ root@6dd9478:~# systemctl status opt.mount
 
 Reboot again to test everything comes up ok:
 
-```
+```bash
 $ systemctl reboot
 
 [... WAIT ...]

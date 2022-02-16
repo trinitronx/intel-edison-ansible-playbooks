@@ -83,4 +83,3 @@
   raw: opkg install openssh-sftp-server
   when: >
     not openssh_server_installed.stdout is search("Status: install (ok|user) installed")
-

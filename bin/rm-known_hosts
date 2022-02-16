@@ -30,4 +30,3 @@ for HOST in "$@"
 do
     ${REPO_BIN_DIR}/docker-run " ssh-keygen -R $HOST ; ssh-keygen -R ${HOST%%lan.37om.com}.local; ssh-keygen -R ${HOST%%.37om.com}.local; ssh-keygen -R ${HOST%%.37om.com} ; ssh-keygen -R ${HOST%%.lan.37om.com} ; ssh-keygen -R $(dig $HOST +short) "
 done
-
