@@ -50,8 +50,3 @@ docker-machine ssh $DOCKER_MACHINE_NAME "sudo VBoxService --only-automount"
 docker-machine ssh $DOCKER_MACHINE_NAME "sudo umount /sf_Users"
 docker-machine ssh $DOCKER_MACHINE_NAME "sudo mkdir /Users; sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g) Users /Users"
 docker-machine ssh $DOCKER_MACHINE_NAME "sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g) Users /Users"
-
-# Fix broken tce-load mirror command
-# NOTE: Check mirror URL works when gathered from:
-#       . /etc/init.d/tc-functions ; set -x; getMirror ; set +x
-docker-machine ssh $DOCKER_MACHINE_NAME "sudo /bin/sed -i'' -e 's/VERSION_ID=.*/VERSION_ID=12.0/'  /etc/os-release"
