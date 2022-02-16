@@ -24,7 +24,7 @@ errorout() {
 # Create docker-machine 'dm' with:
 #  - Docker v20.10.11
 # Source: https://github.com/silver886/boot2docker/releases/tag/v20.10.11
-BOOT2DOCKER_URL='https://github.com/silver886/boot2docker/releases/download/v20.10.11/boot2docker.iso'
+BOOT2DOCKER_URL='https://github.com/silver886/boot2docker/releases/download/v20.10.12-rc1/boot2docker.iso'
 
 docker-machine create --driver virtualbox \
   --virtualbox-boot2docker-url "$BOOT2DOCKER_URL" \
