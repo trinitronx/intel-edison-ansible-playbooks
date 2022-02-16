@@ -1,5 +1,6 @@
 Role: opkg-edison
-====
+=================
+
 **Description:**
 
 This role will:
@@ -11,47 +12,51 @@ Requirements
 
 **Supports:**
 
-  - YoctoLinux - Intel Edison 3.0
+- YoctoLinux - Intel Edison 3.0
 
 **Assumptions:**
 
-This role makes the assumption that the `foo` command exists on the system.  Install this with the `foo` role.
+This role makes the assumption that the `foo` command exists on the system.
+Install this with the `foo` role.
 
 **Required Variables:**
 
-  - `opkg-edison_foo` - Required by `opkg-edison` role.
-  - `opkg-edison_dependency_bar_baz` - Required by dependency `opkg-edison-dependency-bar` role.
-
+- `opkg-edison_foo` - Required by `opkg-edison` role.
+- `opkg-edison_dependency_bar_baz` - Required by dependency
+  `opkg-edison-dependency-bar` role.
 
 Role Variables
 --------------
 
 The default role variables in `defaults/main.yml` are:
 
-    ---
-    # opkg-edison: entry point for defaults
-    opkg-edison_foo: true
+```YAML
+---
+# opkg-edison: entry point for defaults
+opkg-edison_foo: true
+```
 
-  - `opkg-edison_foo` - Allows foo-barring for opkg-edison.
+- `opkg-edison_foo` - Allows foo-barring for opkg-edison.
 
 Dependencies
 ------------
 
 This role depends on the following roles:
 
-  - `opkg-edison-dependency-bar`
-
+- `opkg-edison-dependency-bar`
 
 Example Playbook
 ----------------
 
-    ---
-    # This playbook deploys the opkg-edison role
+```YAML
+---
+# This playbook deploys the opkg-edison role
 
-    - hosts: foo
+- hosts: foo
 
-      roles:
-        - opkg-edison
+  roles:
+    - opkg-edison
+```
 
 License
 -------
@@ -61,8 +66,7 @@ License
 Author Information
 ------------------
 
-(c) 2014-2016 LyraPhase.com / 37Om.com
-(c) 2014-2016 James Cuzella <@trinitronx>
-(c) 2016 James Cuzella
+(c) © 🄯  2014-2016 LyraPhase.com / 37Om.com
+(c) © 🄯  2014-2016 James Cuzella <@trinitronx>
 
 [1]: http://choosealicense.com/licenses/mit/
