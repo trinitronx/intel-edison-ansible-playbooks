@@ -17,7 +17,12 @@ repos:
     -   id: check-merge-conflict
     -   id: check-symlinks
     -   id: check-yaml
-        exclude: \.kitchen\.libvirt\.ssh\.yml
+        exclude: |
+            (?x)^(
+                \.kitchen\.libvirt\.ssh\.yml|
+                roles/journald/\.kitchen\.yml|
+                roles/journald/\.kitchen\.docker\.local\.yml
+            )$
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
         exclude: .*\.patch
