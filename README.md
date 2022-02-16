@@ -1,3 +1,14 @@
+<!-- markdownlint-configure-file
+{
+  "required-headings": {
+    "headings": [
+      "# intel-edison-ansible-playbooks",
+      "*"
+    ]
+  }
+}
+-->
+
 intel-edison-ansible-playbooks
 ==============================
 
