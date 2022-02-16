@@ -56,7 +56,7 @@ if env | grep -q SSH_AUTH_SOCK && test -n "${DOCKER_MACHINE_NAME}"; then
   # Detect the IP of the VM to SSH into for ssh-agent forwarding
   DM_HOST=$(docker-machine inspect -f '{{.Driver.IPAddress}}' ${DOCKER_MACHINE_NAME})
   [[ -z "$DM_HOST" || "$DM_HOST" == "<no value>" ]] && DM_HOST=$(docker-machine inspect -f '{{.Driver.Driver.IPAddress}}' ${DOCKER_MACHINE_NAME})
-  # Test an SSH connection to the docker machine VM via IPAddress first... 
+  # Test an SSH connection to the docker machine VM via IPAddress first...
   # if this does not work, it is likely that virtualbox driver is being used, and
   # VBoxHeadless process has grabbed a port listening on the Host's SSH_PORT, probably with 127.0.0.1 loopback (host-only networking)
   # However, this is dynamic depending on the user's docker-machine driver and VirtualBox network settings (in the case of virtualbox)
@@ -70,7 +70,7 @@ if env | grep -q SSH_AUTH_SOCK && test -n "${DOCKER_MACHINE_NAME}"; then
   else
     # Detect the interface for DM_HOST
     # Since output varies for lsof depending on bridge & virtual interfaces, parse just the last IPv4 Address on the end
-    # Example Pattterns to match: 
+    # Example Pattterns to match:
     #  n127.0.0.1:64086
     #  n192.168.1.129:59584->52.91.196.94:ssh
     #
@@ -309,7 +309,7 @@ for container_name in $RUNNING_CONTAINERS; do
   if docker inspect --format '{{.Config.Cmd}}' $container_name | grep -Eq '.*/init' ; then
     EXEC_CONTAINER="$container_name"
     break
-  fi 
+  fi
 done
 
 if [ -n "$EXEC_CONTAINER" ]; then

@@ -37,7 +37,7 @@ The default role variables in `defaults/main.yml` are:
     openwrt_opkg_repo_files:
       - distfeeds.conf
       - customfeeds.conf
-    
+
     openwrt_opkg_packages:
       - ca-certificates
       - ca-bundle

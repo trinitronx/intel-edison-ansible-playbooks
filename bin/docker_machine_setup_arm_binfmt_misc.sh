@@ -16,4 +16,3 @@ echo "Registering qemu-* binfmt_misc handlers INSIDE docker-machine VM: $DOCKER_
 
 docker-machine ssh $DOCKER_MACHINE_NAME "sudo docker run --privileged --rm docker/binfmt:a7996909642ee92942dcd6cff44b9b95f08dad64"
 docker-machine ssh $DOCKER_MACHINE_NAME "mount | grep -q binfmt_misc || sudo mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc"
-

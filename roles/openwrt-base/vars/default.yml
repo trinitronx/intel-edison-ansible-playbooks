@@ -13,4 +13,3 @@ openwrt_opkg_packages:
   - libopenssl
   - curl
   - uclient-fetch
-

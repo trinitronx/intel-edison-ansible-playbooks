@@ -36,7 +36,7 @@ fi
 #  VBoxManage setextradata $DOCKER_MACHINE_NAME VBoxInternal2/SharedFoldersEnableSymlinksCreate/x11-fwd 1
 #fi
 
-[[ "$(docker-machine status $DOCKER_MACHINE_NAME)" != 'Running' ]] && docker-machine start $DOCKER_MACHINE_NAME 
+[[ "$(docker-machine status $DOCKER_MACHINE_NAME)" != 'Running' ]] && docker-machine start $DOCKER_MACHINE_NAME
 
 docker-machine ssh $DOCKER_MACHINE_NAME "[ -d /usr/local/rpcm ] || sudo mkdir -p /usr/local/rpcm"
 docker-machine ssh $DOCKER_MACHINE_NAME "sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g) rpcm /usr/local/rpcm"

@@ -9,7 +9,7 @@ This document is intended to be a superset of the [Ansible Best Practices](http:
 * Where possible, prefer roles over tasks or included tasks. However…
 * Developing new plays/playbooks might initially be done in a single monolithic playbook to more rapidly iterate. But use existing roles where possible.
 * Playbooks should be as idempotent as possible.
-* Prefer Ansible modules to `command` or `shell`. 
+* Prefer Ansible modules to `command` or `shell`.
 
 ## Formatting
 
